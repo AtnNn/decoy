@@ -21,6 +21,9 @@ let eval = (expr, env) => {
     if (expr.constructor === ast.application) {
 	return call(expr.children.map(x => eval(x, env)));
     }
+    if (expr.constructor === ast.lambda) {
+	return lambda(expr.params.name, expr.body, env);
+    }
     throw new Error('invalid expression');
 };
 
@@ -42,4 +45,12 @@ let strict = f => {
     return f;
 };
 
-module.exports = { eval_decls, strict };
+let lambda = (param, body, env) => {
+    return arg => {
+	let local = { ...env };
+	local[param] = arg;
+	return eval(body, local);
+    };
+};
+
+module.exports = { eval_decls, strict, eval };

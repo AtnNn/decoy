@@ -41,7 +41,13 @@ let parens = parser =>
 
 let lazy = parser => (input, position) => parser()(input, position);
 
-let expression = one_of([lazy(() => application), lazy(() => expression1)]);
+let lambda =
+    parse(bindings, params =>
+	  parse(token(match(/->/)), () =>
+		parse(expression, body =>
+		      value(new ast.lambda(params, body)))));
+
+let expression = one_of([lambda, lazy(() => application), lazy(() => expression1)]);
 
 let many2 = parser =>
     parse(parser, x =>
