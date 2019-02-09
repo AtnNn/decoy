@@ -65,9 +65,20 @@ let definition =
 		parse(expression, val => 
 		      value(new ast.declaration(id, val)))));
 
-let declaration = one_of([definition]);
+let struct = parse(token(match(/struct/)), () =>
+		   parse(identifier, name =>
+			 parse(token(char('(')), () =>
+			       parse(many(identifier), fields =>
+				     parse(token(char(')')), () =>
+					   value(new ast.struct(name, fields)))))));
 
-let toplevel = parse(many(declaration), x => parse(match(/\W*/), () => value(x)));
+let declaration = one_of([definition, struct]);
+
+let toplevel =
+    parse(many(parse(declaration, decl =>
+		     parse(token(char(';')), () =>
+			   value(decl)))), x =>
+	  parse(match(/\W*/), () => value(x)));
 
 module.exports = {
     toplevel, declaration, definition, expression, identifier, application, string, string_char

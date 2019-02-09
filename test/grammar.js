@@ -6,8 +6,10 @@ let dump = x => console.log(util.inspect(x, false, null, true));
 
 let test = (parser, str) => {
     let res = complete(parser)(str, 0);
-    dump(str);
-    dump(res);
+    if(res.failed) {
+	dump(str);
+	dump(res);
+    }
 };
 
 test(match(/bar/), 'bar');

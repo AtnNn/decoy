@@ -1,11 +1,11 @@
 let {complete} = require('./parse')
 let {toplevel} = require('./grammar')
-let {eval_decls, strict} = require('./interpreter')
+let {eval_defs, strict} = require('./interpreter')
 let fs = require('fs');
 
 let source = fs.readFileSync(process.argv[2]);
-let decls = complete(toplevel)(source, 0).value;
-let env = eval_decls(decls, {
+let defs = complete(toplevel)(source, 0).value;
+let env = eval_defs(defs, {
     add: (a, b) => a + b,
     print: x => console.log(x)
 });

@@ -4,7 +4,8 @@ module.exports = {
     application: function application(children){ this.children = children; },
     number: function number(value){ this.value = value; },
     string: function string(value){ this.value = value; },
-    lambda: function lambda(params, body){ this.params = params; this.body = body; }
+    lambda: function lambda(params, body){ this.params = params; this.body = body; },
+    struct: function struct(name, fields){ this.name = name; this.fields = fields; }
 }
 
     

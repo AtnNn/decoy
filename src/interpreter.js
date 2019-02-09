@@ -1,9 +1,14 @@
 let ast = require('./ast');
 
-let eval_decls = (decls, initial_env) => {
+let eval_defs = (defs, initial_env) => {
     env = {...initial_env};
-    for (let decl of decls) {
-	env[decl.lhs.name] = () => eval(decl.rhs, env);
+    for (let def of defs) {
+	if (def.constructor === ast.struct) {
+	    env[def.name.name] = struct(def.name.name, def.fields.map(x => x.name), env);
+	}
+	if (def.constructor === ast.declaration) {
+	    env[def.lhs.name] = () => eval(def.rhs, env);
+	}
     }
     return env;
 };
@@ -53,4 +58,15 @@ let lambda = (param, body, env) => {
     };
 };
 
-module.exports = { eval_decls, strict, eval };
+let struct = (name, fields, env) => {
+    fields = [...fields];
+    fields.reverse();
+    let fun = obj => ({ __type: name, ...obj });
+    for (let field of fields) {
+	let nextf = fun;
+	fun = obj => x => nextf({...obj, [field]: x});
+    }
+    return fun({});
+};
+
+module.exports = { eval_defs, strict, eval };

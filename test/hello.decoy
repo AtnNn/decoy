@@ -1,1 +1,1 @@
-main := print "hello"
+main := print "hello";
