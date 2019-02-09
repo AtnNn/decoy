@@ -1,6 +1,6 @@
 let fs = require('fs');
 let ast = require('./ast');
-let {many, failed, value, one_of, or_else, parse, sequence, char, digit, match} = require('./parse');
+let {many, failed, value, one_of, or_else, parse, sequence, char, digit, match, lazy} = require('./parse');
 
 let id_char1 = match(/[a-z_]/i);
 
@@ -38,8 +38,6 @@ let parens = parser =>
 	  parse(parser, x =>
 		parse(token(char(')')), () =>
 		      value(x))));
-
-let lazy = parser => (input, position) => parser()(input, position);
 
 let lambda =
     parse(bindings, params =>

@@ -1,4 +1,4 @@
-let match = regex => (input, position) => {
+let match = regex => (input, position, state) => {
     new_regex = RegExp(regex.source, regex.flags + 'y');
     new_regex.lastIndex = position;
     let res = new_regex.exec(input);
@@ -15,25 +15,26 @@ let failed = (position, reason) => ({failed: true, position, reason});
 
 let value = x => ({value: x});
 
-let many = parser => (input, position) => {
-    let first = parser(input, position)
+let many = parser => (input, position, state) => {
+    let first = parser(input, position, state)
     if (first.failed) {
 	return { position: position, value: [] };
     }
-    let rest = many(parser)(input, first.position)
+    let rest = many(parser)(input, first.position, first.state)
     return {
 	position: rest.position,
-	value: [first.value, ...rest.value]
+	value: [first.value, ...rest.value],
+	state
     };
 };
 
-let one_of = parsers => (input, position) => {
+let one_of = parsers => (input, position, state) => {
     if (parsers === []) {
 	return failed(position, 'one_of: no parsers!');
     }
     let reasons = [];
     for (let parser of parsers) {
-	let res = parser(input, position);
+	let res = parser(input, position, state);
 	if (!res.failed) {
 	    return res;
 	}
@@ -42,16 +43,16 @@ let one_of = parsers => (input, position) => {
     return failed(position, 'one_of: none of the parsers matched:\n  ' + reasons.join('\n  '));
 };
 
-let or_else = (a, b) => (input, position) => {
-    let res = a(input, position);
+let or_else = (a, b) => (input, position, state) => {
+    let res = a(input, position, state);
     if (!res.failed) {
 	return res;
     }
-    return b(input, position);
+    return b(input, position, state);
 };
 
-let parse = (parser, f) => (input, position) => {
-    let res = parser(input, position);
+let parse = (parser, f) => (input, position, state) => {
+    let res = parser(input, position, state);
     if (res.failed) {
 	return res;
     }
@@ -60,24 +61,25 @@ let parse = (parser, f) => (input, position) => {
 	return next;
     }
     if ('value' in next || 'failed' in next) {
-	return { position: res.position, ...next };
+	return { position: res.position, state: res.state, ...next };
     }
-    return next(input, res.position);
+    return next(input, res.position, res.state);
 };
 
 let digit = match(/[0-9]/);
 
-let sequence = parsers => (input, position) => {
+let sequence = parsers => (input, position, state) => {
     values = [];
     for (let parser of parsers) {
-	let res = parser(input, position);
+	let res = parser(input, position, state);
 	if (res.failed) {
 	    return res;
 	}
 	values.push(res.value);
 	position = res.position;
+	state = res.state;
     }
-    return { value: values, position };
+    return { value: values, position, state };
 };
 
 let any = match(/[^]/);
@@ -89,8 +91,8 @@ let char = expect => parse(any, next => {
     return {failed: true, reason: "char: expected '" + expect + "'"};
 });
 
-let complete = parser => (input, position) => {
-    let res = parser(input, position);
+let complete = parser => (input, position, state) => {
+    let res = parser(input, position, state);
     if (res.failed) {
 	return res;
     }
@@ -100,6 +102,8 @@ let complete = parser => (input, position) => {
     return res;
 };
 
+let lazy = parser => (input, position, state) => parser()(input, position, state);
+
 module.exports = {
-    many, failed, value, one_of, or_else, parse, sequence, char, digit, match, complete, any
+    many, failed, value, one_of, or_else, parse, sequence, char, digit, match, complete, any, lazy
 };
