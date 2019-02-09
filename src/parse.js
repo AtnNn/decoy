@@ -78,8 +78,6 @@ let sequence = parsers => (input, position) => {
     return { value: values, position };
 };
 
-let whitespace = match(/[ \r\n\t]+/);
-
 let any = match(/[^]/);
 
 let char = expect => parse(any, next => {
@@ -101,5 +99,5 @@ let complete = parser => (input, position) => {
 };
 
 module.exports = {
-    many, failed, one_of, or_else, parse, sequence, whitespace, char, digit, match, complete, any
+    many, failed, one_of, or_else, parse, sequence, char, digit, match, complete, any
 };
