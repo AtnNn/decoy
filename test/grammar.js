@@ -14,11 +14,11 @@ test(match(/bar/), 'bar');
 test(one_of([match(/a/), match(/b/)]), 'b');
 test(parse(char('a'), a => ({value: a})), 'a');
 test(identifier, 'abc');
-test(definition, 'foo = bar')
-test(declaration, 'foo = bar')
+test(definition, 'foo := bar')
+test(declaration, 'foo := bar')
 test(application, 'mul 4 5')
 test(application, 'add 1 (mul 4 5)')
-test(declaration, 'foo = add 1 (mul 4 5)')
+test(declaration, 'foo := add 1 (mul 4 5)')
 test(string_char, 'f')
 test(many(string_char), 'foo')
 test(string, '"foo"')

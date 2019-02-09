@@ -61,7 +61,7 @@ let expression1 = one_of([atom, parens(lazy(() => expression))]);
 
 let definition =
     parse(bindings, id =>
-	  parse(token(char("=")), () =>
+	  parse(token(match(/:=/)), () =>
 		parse(expression, val => 
 		      value(new ast.declaration(id, val)))));
 

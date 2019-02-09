@@ -13,4 +13,4 @@ let test = str => {
 
 test('1');
 test('add 1 2');
-test('(a -> add 3 a) 1')
+test('(a -> add 3 a) 1');
