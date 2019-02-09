@@ -13,6 +13,8 @@ let match = regex => (input, position) => {
 
 let failed = (position, reason) => ({failed: true, position, reason});
 
+let value = x => ({value: x});
+
 let many = parser => (input, position) => {
     let first = parser(input, position)
     if (first.failed) {
@@ -82,7 +84,7 @@ let any = match(/[^]/);
 
 let char = expect => parse(any, next => {
     if (expect == next) {
-	return {value: next};
+	return value(next);
     }
     return {failed: true, reason: "char: expected '" + expect + "'"};
 });
@@ -99,5 +101,5 @@ let complete = parser => (input, position) => {
 };
 
 module.exports = {
-    many, failed, one_of, or_else, parse, sequence, char, digit, match, complete, any
+    many, failed, value, one_of, or_else, parse, sequence, char, digit, match, complete, any
 };
