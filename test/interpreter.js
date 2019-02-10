@@ -21,7 +21,7 @@ let testd = str => {
 	console.log(str);
 	console.log(parsed);
     } else {
-	console.log(str + ' -->', strict(eval_defs(parsed.value, builtins).test));
+	console.log(str, '-->', strict(eval_defs(parsed.value, builtins).test));
     }
 };
 
@@ -29,4 +29,6 @@ test('1', 1n);
 test('add 1 2', 3n);
 test('(a -> add 3 a) 1', 4n);
 
-testd('struct f (a b); test := f 1 2;')
+testd('test := 1;');
+testd('struct f (a b); test := f 1 2;');
+testd('struct f (a b); test := (switch (f 1 2) (f a b): a;);');

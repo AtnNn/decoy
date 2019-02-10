@@ -1,6 +1,6 @@
 let fs = require('fs');
 let ast = require('./ast');
-let {many, failed, value, one_of, or_else, parse, sequence, char, digit, match, lazy} = require('./parse');
+let {many, many1, failed, value, one_of, or_else, parse, sequence, char, digit, match, lazy} = require('./parse');
 
 let id_char1 = match(/[a-z_]/i);
 
@@ -12,8 +12,6 @@ let identifier =
     token(parse(id_char1, x =>
 		parse(many(id_char), xs =>
 		      value(new ast.identifier(x + xs.join(''))))));
-
-let bindings = identifier;
 
 let number = token(parse(match(/[0-9]+/), n => value(new ast.number(BigInt(n)))));
 
@@ -39,6 +37,18 @@ let parens = parser =>
 		parse(token(char(')')), () =>
 		      value(x))));
 
+let trace = x => {
+    console.log('trace', x);
+    return x;
+};
+
+let binding_application =
+    parens(parse(identifier, x =>
+		 parse(lazy(() => bindings), xs =>
+		       value(new ast.application([x, ...xs])))));
+
+let bindings = many1(one_of([identifier, binding_application]));
+
 let lambda =
     parse(bindings, params =>
 	  parse(token(match(/->/)), () =>
@@ -55,10 +65,20 @@ let many2 = parser =>
 
 let application = parse(many2(lazy(() => expression1)), es => value(new ast.application(es)));
 
-let expression1 = one_of([atom, parens(lazy(() => expression))]);
+let switch_ = parse(token(match(/switch/)), () =>
+		    parse(parens(expression), val =>
+			  parse(many(parse(bindings, pattern =>
+					   parse(token(char(':')), () =>
+						 parse(expression, body =>
+						       parse(token(char(';')), () =>
+							     value(new ast.case_(pattern, body))))))), cases_ =>
+				value(new ast.switch_(val, cases_)))));
+				
+
+let expression1 = one_of([switch_, atom, parens(lazy(() => expression))]);
 
 let definition =
-    parse(bindings, id =>
+    parse(expression, id =>
 	  parse(token(match(/:=/)), () =>
 		parse(expression, val => 
 		      value(new ast.declaration(id, val)))));

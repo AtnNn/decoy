@@ -28,6 +28,10 @@ let many = parser => (input, position, state) => {
     };
 };
 
+let many1 = parser => parse(parser, x =>
+			    parse(many(parser), xs =>
+				  value([x, ...xs])));
+
 let one_of = parsers => (input, position, state) => {
     if (parsers === []) {
 	return failed(position, 'one_of: no parsers!');
@@ -105,5 +109,5 @@ let complete = parser => (input, position, state) => {
 let lazy = parser => (input, position, state) => parser()(input, position, state);
 
 module.exports = {
-    many, failed, value, one_of, or_else, parse, sequence, char, digit, match, complete, any, lazy
+    many, many1, failed, value, one_of, or_else, parse, sequence, char, digit, match, complete, any, lazy
 };
