@@ -1,18 +1,13 @@
 let ast = require('./ast');
-
-let record = function record(name, fields, field_names) {
-    this.name = name
-    this.fields = fields;
-    this.field_names = field_names;
-};
+let {record} = require('./data');
 
 let eval_defs = (defs, initial_env) => {
     let env = {...initial_env};
     for (let def of defs) {
-	if (def.constructor === ast.struct) {
-	    env[def.name.name] = struct(def.name.name, def.fields.map(x => x.name), env);
-	} else if (def.constructor === ast.declaration) {
-	    env[def.lhs.name] = () => eval(def.rhs, env);
+	if (ast.is_struct(def)) {
+	    env[def.fields.name.fields.name] = struct(def.fields.name.fields.name, def.fields.fields.map(x => x.fields.name), env);
+	} else if (ast.is_declaration(def)) {
+	    env[def.fields.lhs.fields.name] = () => eval(def.fields.rhs, env);
 	} else {
 	    throw new Error('unknown def');
 	}
@@ -21,23 +16,23 @@ let eval_defs = (defs, initial_env) => {
 };
 
 let eval = (expr, env) => {
-    if (expr.constructor === ast.identifier) {
-	return env[expr.name];
+    if (ast.is_identifier(expr)) {
+	return env[expr.fields.name];
     }
-    if (expr.constructor === ast.number) {
-	return expr.value;
+    if (ast.is_number(expr)) {
+	return expr.fields.value;
     }
-    if (expr.constructor === ast.string) {
-	return expr.value;
+    if (ast.is_string(expr)) {
+	return expr.fields.value;
     }
-    if (expr.constructor === ast.application) {
-	return call(expr.children.map(x => eval(x, env)));
+    if (ast.is_application(expr)) {
+	return call(expr.fields.children.map(x => eval(x, env)));
     }
-    if (expr.constructor === ast.lambda) {
-	return lambda(expr.params, expr.body, env);
+    if (ast.is_lambda(expr)) {
+	return lambda(expr.fields.params, expr.fields.body, env);
     }
-    if (expr.constructor === ast.switch_) {
-	return switch_(eval(expr.value, env), expr.cases, env);
+    if (ast.is_switch(expr)) {
+	return switch_(eval(expr.fields.value, env), expr.fields.cases, env);
     }
     throw new Error('invalid expression');
 };
@@ -89,12 +84,12 @@ let struct = (name, infields, env) => {
 };
 
 let match = (pattern, val) => {
-    if (pattern.constructor === ast.identifier) {
-	return { env: { [pattern.name]: val } };
+    if (ast.is_identifier(pattern)) {
+	return { env: { [pattern.fields.name]: val } };
     }
-    if (pattern.constructor === ast.application) {
-	if(val instanceof record && val.name === pattern.children[0].name) {
-	    let params = pattern.children.slice(1);
+    if (ast.is_application(pattern)) {
+	if(val instanceof record && val.name === pattern.fields.children[0].fields.name) {
+	    let params = pattern.fields.children.slice(1);
 	    if (params.length != val.field_names.length) {
 		return {failed: true};
 	    }
@@ -108,16 +103,16 @@ let match = (pattern, val) => {
 	    }
 	    return {env};
 	}
-	return {failed: true};	
+	return {failed: true};
     }
     throw new Error('invalid pattern');
 }
 
 let switch_ = (value, cases, env) => {
     for (let case_ of cases) {
-	let res = match(case_.pattern[0], value);
+	let res = match(case_.fields.pattern[0], value);
 	if (!res.failed) {
-	    return eval(case_.body, { ...env, ...res.env });
+	    return eval(case_.fields.body, { ...env, ...res.env });
 	}
     }
     throw new Error('no matching case');

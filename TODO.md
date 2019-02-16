@@ -6,5 +6,6 @@
 - Bootstrap
 - Types
 - Middle-out parsing
-- stdlib
+- Standard library
 - C FFI
+- Comments
