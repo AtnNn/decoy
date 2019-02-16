@@ -3,7 +3,7 @@ let {toplevel} = require('./grammar')
 let {eval_defs, strict} = require('./interpreter')
 let fs = require('fs');
 
-let source = fs.readFileSync(process.argv[2]);
+let source = fs.readFileSync(process.argv[2]).toString('utf8');
 let res = complete(toplevel)({data:source, position:0, state:{}, scope:{}});
 if (res.failed) {
     console.log('parsing failed at ' + res.position + ': ' + res.reason);
