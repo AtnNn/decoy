@@ -90,7 +90,13 @@ let struct = parse(token(match(/struct/)), () =>
 				     parse(token(char(')')), () =>
 					   value(new ast.struct(name, fields)))))));
 
-let declaration = one_of([definition, struct]);
+let macro = parse(token(match(/macro/)), () =>
+		  parse(expression, pattern =>
+			parse(token(match(/:=/)), () =>
+			      parse(expression, body =>
+				    value(new ast.macro(pattern, body))))));
+
+let declaration = one_of([definition, struct, macro]);
 
 let toplevel =
     parse(many(parse(declaration, decl =>
