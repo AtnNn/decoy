@@ -123,4 +123,4 @@ let switch_ = (value, cases, env) => {
     throw new Error('no matching case');
 };
 
-module.exports = { eval_defs, strict, eval };
+module.exports = { eval_defs, strict, eval, record };

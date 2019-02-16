@@ -26,7 +26,7 @@ let tracep = (name, parser) => input => {
     console.log(indent + 'parser', name, 'at', repr(input.data.slice(input.position, input.position+10)), '('+input.position+')');
     let res = scoped(parser, {traceIndent: (input.scope.traceIndent||0) + 1})(input);
     if (res.failed) {
-	console.log(indent + 'parser', name, 'failed:\n ', res.reason.replace(/^|\n/g, x => x + indent));
+	console.log(indent + 'parser', name, 'failed at ' + res.position +':\n ', res.reason.replace(/^|\n/g, x => x + indent));
 	return res;
     }
     console.log(indent + 'parser', name, 'returned', res.value, 'from', repr(input.data.slice(input.position, res.position)));
@@ -68,9 +68,20 @@ let one_of = parsers => input => {
 	if (!res.failed) {
 	    return res;
 	}
-	reasons.push('at ' + res.position + ': ' + res.reason);
+	if (res.position > input.position) {
+	    return res;
+	}
+	reasons.push(res.reason);
     }
     return failed('one_of: none of the parsers matched:\n  ' + reasons.map(r => r.replace(/^|\n/g, x => x + '  ')).join('\n  '))(input);
+};
+
+let try_ = parser => input => {
+    let res = parser(input);
+    if (res.failed && res.position !== input.position) {
+	return {...res, position: input.position, reason: 'at ' + res.position + ': ' + res.reason};
+    }
+    return res;
 };
 
 let or_else = (a, b) => input => {
@@ -119,16 +130,21 @@ let binds = (parsers, f) => bind(sequence(parsers), res => f.apply(null, res));
 
 let maps = (parsers, f) => map(sequence(parsers), res => f.apply(null, res));
 
-let any = match(/[^]/);
-
-let value = val => input => success(val)(input);
-
-let char = expect => bind(any, next => {
-    if (expect == next) {
-	return value(next);
+let any = input => {
+    if (input.data.length === input.position) {
+	return failed('any: no more data')(input);
     }
-    return failed("char: expected '" + expect + "'");
-});
+    return success(input.data[input.position])(seek(input.position + 1)(input))
+};
+
+let string = str => input => {
+    if (input.data.slice(input.position, input.position + str.length) !== str) {
+	return failed('string ' + JSON.stringify(str) + ' not found')(seek(input.data.length + 1)(input));
+    }
+    return success(str)(seek(input.position + str.length)(input))
+};
+
+let char = string;
 
 let complete = parser => input => {
     let res = parser(input);
@@ -143,7 +159,13 @@ let complete = parser => input => {
 
 let lazy = parser => input => parser()(input);
 
+let backtracking_one_of = parsers => {
+    let inits = parsers.slice(0, -1);
+    let last = parsers[parsers.length - 1];
+    return one_of([...inits.map(p => try_(p)), last]);
+};
+
 module.exports = {
     many, many1, failed, one_of, or_else, sequence, char, digit, match, complete, any, lazy,
-    value, bind, map, binds, maps, tracep
+    bind, map, binds, maps, tracep, try_, backtracking_one_of
 };

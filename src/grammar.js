@@ -1,7 +1,7 @@
 let fs = require('fs');
 let ast = require('./ast');
 let {many, many1, failed, one_of, or_else, sequence, char, digit, match, lazy,
-     value, bind, map, binds, maps, tracep} = require('./parse');
+     value, bind, map, binds, maps, tracep, try_, backtracking_one_of} = require('./parse');
 
 let trace = (...args) => {
     console.log('trace:', ...args);
@@ -12,7 +12,9 @@ let id_char1 = match(/[a-z_]/i);
 
 let id_char = or_else(id_char1, digit);
 
-let token = parser => maps([match(/\s*/), parser], (_, x) => x);
+let empty_space = match(/\s*/);
+
+let token = parser => maps([parser, empty_space], (x, _) => x);
 
 let dollar = token(match(/\$/));
 
@@ -22,19 +24,21 @@ let identifier =
 
 let number = token(map(match(/[0-9]+/), n => new ast.number(BigInt(n))));
 
-let string_char = one_of([match(/[^\\"\n]/),
-			  map(match(/\\n/), () => '\n'),
-			  map(match(/\\r/), () => '\r'),
-			  map(match(/\\t/), () => '\t'),
-			  map(match(/\\\\/), () => '\\'),
-			  map(match(/\\"/), () => '"')]);
+let string_char = one_of([
+    match(/[^\\"\n]/),
+    maps([match(/\\/), one_of([
+	map(match(/n/), () => '\n'),
+	map(match(/r/), () => '\r'),
+	map(match(/t/), () => '\t'),
+	map(match(/\\/), () => '\\'),
+	map(match(/"/), () => '"')])], (_, c) => c)]);
 
 let string = token(maps([char('"'), many(string_char),  char('"')],
 			(_, chars, __) => new ast.string(chars.join(''))));
 
 let literal = one_of([number, string]);
 
-let atom = one_of([literal, identifier]);
+let atom = one_of([identifier, literal]);
 
 let parens = parser =>
     maps([token(char('(')),  parser, token(char(')'))],
@@ -44,7 +48,7 @@ let binding_application =
     parens(maps([identifier, lazy(() => bindings)],
 		(x, xs) => new ast.application([x, ...xs])));
 
-let bindings = many1(one_of([identifier, binding_application]));
+let bindings = many1(backtracking_one_of([identifier, binding_application]));
 
 let lambda =
     maps([bindings, token(match(/->/)), lazy(() => expression)],
@@ -65,7 +69,7 @@ let macro_expand = parser => input => {
     return res;
 };
 
-let expression = one_of([lambda, lazy(() => application), lazy(() => expression1)]);
+let expression = backtracking_one_of([lambda, lazy(() => application), lazy(() => expression1)]);
 
 let many2 = parser =>
     maps([parser, parser, many(parser)],
@@ -79,11 +83,11 @@ let case_ = maps([bindings, token(char(':')), expression, token(char(';'))],
 let switch_ = maps([token(match(/switch/)), parens(expression), many(case_)],
 		    (_, val, cases) => new ast.switch_(val, cases));
 
-let quote = maps([token(match(/\$\{/)), lazy(() => one_of([declaration, expression])), token(match(/}/))], (_, x, __) => new ast.quote(x));
+let quote = maps([token(match(/\$\{/)), lazy(() => backtracking_one_of([declaration, expression])), token(match(/}/))], (_, x, __) => new ast.quote(x));
 
 let antiquote = maps([dollar, lazy(() => expression1)], (_, x) => new ast.antiquote(x));
 
-let expression1 = one_of([switch_, atom, quote, antiquote, parens(lazy(() => expression))]);
+let expression1 = one_of([try_(switch_), quote, antiquote, try_(atom), parens(lazy(() => expression))]);
 
 let definition =
     maps([expression, token(match(/:=/)), expression],
@@ -100,11 +104,11 @@ let macro = binds([token(match(/macro/)), expression, token(match(/:=/)), expres
 		      return res;
 		  });
 
-let declaration = one_of([definition, struct, macro, antiquote]);
+let declaration = backtracking_one_of([struct, macro, antiquote, definition]);
 
 let toplevel =
-    maps([many(maps([declaration, token(char(';'))], decl => decl)), match(/\W*/)],
-	 (decls, _) => decls);
+    maps([empty_space, many(maps([declaration, token(char(';'))], decl => decl))],
+	 (_, decls) => decls);
 
 module.exports = {
     toplevel, declaration, definition, expression, identifier, application, string, string_char
