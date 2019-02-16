@@ -8,7 +8,7 @@ let builtins = {
 };
 
 let test = (str, expected) => {
-    out = strict(eval(complete(expression)(str, 0).value, builtins));
+    out = strict(eval(complete(expression)({data:str, position:0, scope:{}, state:{}}).value, builtins));
     if (expected !== out) {
 	console.log(str);
 	console.log(out);
@@ -16,7 +16,7 @@ let test = (str, expected) => {
 };
 
 let testd = str => {
-    let parsed = complete(toplevel)(str, 0);
+    let parsed = complete(toplevel)({data:str, position:0, scope:{}, state:{}});
     if (parsed.failed) {
 	console.log(str);
 	console.log(parsed);
