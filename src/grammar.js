@@ -71,8 +71,13 @@ let definition =
 let struct = maps([token(match(/struct/)), identifier, parens(many(identifier))],
 		  (_, name, fields) => new ast.struct(name, fields));
 
-let macro = maps([token(match(/macro/)), expression, token(match(/:=/)), expression],
-		 (_, pattern, __, body) => new ast.macro(pattern, body));
+let macro = binds([token(match(/macro/)), expression, token(match(/:=/)), expression],
+		  (_, pattern, __, body) => input => {
+		      let m = new ast.macro(pattern, body);
+		      let res = success(input, m);
+		      res.state = { ...res.state, macros: [...(res.state.macros||[]), m]};
+		      return res;
+		  });
 
 let declaration = one_of([definition, struct, macro]);
 
