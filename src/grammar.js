@@ -14,6 +14,8 @@ let id_char = or_else(id_char1, digit);
 
 let token = parser => maps([match(/\s*/), parser], (_, x) => x);
 
+let dollar = token(match(/\$/));
+
 let identifier =
     token(maps([id_char1, many(id_char)], (x, xs) =>
 	       new ast.identifier(x + xs.join(''))));
@@ -48,6 +50,21 @@ let lambda =
     maps([bindings, token(match(/->/)), lazy(() => expression)],
 	 (params, _, body) => new ast.lambda(params, body));
 
+let macro_expand = parser => input => {
+    let res = parser(input);
+    if (res.failed) {
+	return res;
+    }
+    for (let macro of input.state.macros || []) {
+	let m = syntax_match(macro.pattern, res.value);
+	if (!m.failed) {
+	    let val = eval(macro.body, {...input.state.macro_env, ...syntax_value_env(m.env)});
+	    return value_syntax(val);
+	}
+    }
+    return res;
+};
+
 let expression = one_of([lambda, lazy(() => application), lazy(() => expression1)]);
 
 let many2 = parser =>
@@ -62,7 +79,11 @@ let case_ = maps([bindings, token(char(':')), expression, token(char(';'))],
 let switch_ = maps([token(match(/switch/)), parens(expression), many(case_)],
 		    (_, val, cases) => new ast.switch_(val, cases));
 
-let expression1 = one_of([switch_, atom, parens(lazy(() => expression))]);
+let quote = maps([token(match(/\$\{/)), lazy(() => one_of([declaration, expression])), token(match(/}/))], (_, x, __) => new ast.quote(x));
+
+let antiquote = maps([dollar, lazy(() => expression1)], (_, x) => new ast.antiquote(x));
+
+let expression1 = one_of([switch_, atom, quote, antiquote, parens(lazy(() => expression))]);
 
 let definition =
     maps([expression, token(match(/:=/)), expression],
@@ -79,7 +100,7 @@ let macro = binds([token(match(/macro/)), expression, token(match(/:=/)), expres
 		      return res;
 		  });
 
-let declaration = one_of([definition, struct, macro]);
+let declaration = one_of([definition, struct, macro, antiquote]);
 
 let toplevel =
     maps([many(maps([declaration, token(char(';'))], decl => decl)), match(/\W*/)],

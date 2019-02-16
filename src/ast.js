@@ -8,7 +8,7 @@ module.exports = {
     struct: function struct(name, fields){ this.name = name; this.fields = fields; },
     switch_: function switch_(value, cases){ this.value = value; this.cases = cases; },
     case_: function case_(pattern, body){ this.pattern = pattern; this.body = body; },
-    macro: function macro(pattern, body){ this.pattern = pattern; this.body = body; }
+    macro: function macro(pattern, body){ this.pattern = pattern; this.body = body; },
+    quote: function quote(ast){ this.ast = ast; },
+    antiquote: function antiquote(expression){ this.expression = expression; }
 }
-
-    
