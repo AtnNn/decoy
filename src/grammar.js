@@ -1,7 +1,7 @@
 let fs = require('fs');
 let ast = require('./ast');
 let {many, many1, failed, one_of, or_else, sequence, char, digit, match, lazy,
-     value, fail, bind, map, binds, maps, tracep} = require('./parse');
+     value, bind, map, binds, maps, tracep} = require('./parse');
 
 let trace = (...args) => {
     console.log('trace:', ...args);

@@ -8,23 +8,23 @@ let repr = x => {
 };
 
 // input: data, position, scope, state
-// result: position, value, state
+// success: position, value, state
 // failed: failed. position, reason
 
-let scoped = (parser, input, scope) => parser({...input, scope: {...input.scope, ...scope}});
+let scoped = (parser, scope) => input => parser({...input, scope: {...input.scope, ...scope}});
 
-let seek = (input, position) => ({...input, position});
+let seek = position => input => ({...input, position});
 
-let update = (input, result) => ({ ...input, position: result.position, state: result.state });
+let update = result => input => ({ ...input, position: result.position, state: result.state });
 
-let success = (input, value) => ({value, position: input.position, state: input.state});
+let success = value => input => ({value, position: input.position, state: input.state});
 
-let failed = (input, reason) => ({failed: true, position: input.position, reason});
+let failed = reason => input => ({failed: true, position: input.position, reason});
 
 let tracep = (name, parser) => input => {
     let indent = '  '.repeat(input.scope.traceIndent);
     console.log(indent + 'parser', name, 'at', repr(input.data.slice(input.position, input.position+10)), '('+input.position+')');
-    let res = scoped(parser, input, {traceIndent: (input.scope.traceIndent||0) + 1});
+    let res = scoped(parser, {traceIndent: (input.scope.traceIndent||0) + 1})(input);
     if (res.failed) {
 	console.log(indent + 'parser', name, 'failed:\n ', res.reason.replace(/^|\n/g, x => x + indent));
 	return res;
@@ -38,9 +38,9 @@ let match = regex => input => {
     new_regex.lastIndex = input.position;
     let res = new_regex.exec(input.data);
     if (!res) {
-	return failed(input, 'match: could not match /' + regex.source + '/' + regex.flags);
+	return failed('match: could not match /' + regex.source + '/' + regex.flags)(input);
     }
-    return success(seek(input, new_regex.lastIndex), res[0]);
+    return success(res[0])(seek(new_regex.lastIndex)(input));
 };
 
 let many = parser => input => {
@@ -49,10 +49,10 @@ let many = parser => input => {
     while (true) {
 	let res = parser(current);
 	if (res.failed) {
-	    return success(current, value);
+	    return success(value)(current);
 	}
 	value.push(res.value);
-	current = update(current, res);
+	current = update(res)(current);
     }
 };
 
@@ -60,7 +60,7 @@ let many1 = parser => maps([parser, many(parser)], (x, xs) => [x, ...xs]);
 
 let one_of = parsers => input => {
     if (parsers === []) {
-	return failed(input, 'one_of: no parsers!');
+	return failed('one_of: no parsers!')(input);
     }
     let reasons = [];
     for (let parser of parsers) {
@@ -70,7 +70,7 @@ let one_of = parsers => input => {
 	}
 	reasons.push('at ' + res.position + ': ' + res.reason);
     }
-    return failed(input, 'one_of: none of the parsers matched:\n  ' + reasons.map(r => r.replace(/^|\n/g, x => x + '  ')).join('\n  '));
+    return failed('one_of: none of the parsers matched:\n  ' + reasons.map(r => r.replace(/^|\n/g, x => x + '  ')).join('\n  '))(input);
 };
 
 let or_else = (a, b) => input => {
@@ -87,7 +87,7 @@ let bind = (parser, f) => input => {
 	return res;
     }
     let next = f(res.value);
-    return next(update(input, res));
+    return next(update(res)(input));
 };
 
 let map = (parser, f) => input => {
@@ -110,9 +110,9 @@ let sequence = parsers => input => {
 	    return res;
 	}
 	values.push(res.value);
-	current = update(current, res);
+	current = update(res)(current);
     }
-    return success(current, values);
+    return success(values)(current);
 };
 
 let binds = (parsers, f) => bind(sequence(parsers), res => f.apply(null, res));
@@ -121,15 +121,13 @@ let maps = (parsers, f) => map(sequence(parsers), res => f.apply(null, res));
 
 let any = match(/[^]/);
 
-let value = val => input => success(input, val);
-
-let fail = reason => input => failed(input, reason);
+let value = val => input => success(val)(input);
 
 let char = expect => bind(any, next => {
     if (expect == next) {
 	return value(next);
     }
-    return fail("char: expected '" + expect + "'");
+    return failed("char: expected '" + expect + "'");
 });
 
 let complete = parser => input => {
@@ -138,7 +136,7 @@ let complete = parser => input => {
 	return res;
     }
     if (res.position !== input.data.length) {
-	return failed(res, 'complete: expected end of input');
+	return failed('complete: expected end of input')(update(res)(input));
     }
     return res;
 };
@@ -147,5 +145,5 @@ let lazy = parser => input => parser()(input);
 
 module.exports = {
     many, many1, failed, one_of, or_else, sequence, char, digit, match, complete, any, lazy,
-    value, fail, bind, map, binds, maps, tracep
+    value, bind, map, binds, maps, tracep
 };
