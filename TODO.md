@@ -1,11 +1,19 @@
 # Decoy
 
+- Operators
 - REPL
 - Debugger
 - Compiler
 - Bootstrap
 - Types
 - Middle-out parsing
-- Standard library
 - C FFI
 - Comments
+- LSP
+- Math
+- Strings
+- Floats
+- IO
+- Threading
+- Backtracking
+- CSP

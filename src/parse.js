@@ -167,5 +167,5 @@ let backtracking_one_of = parsers => {
 
 module.exports = {
     many, many1, failed, one_of, or_else, sequence, char, digit, match, complete, any, lazy,
-    bind, map, binds, maps, tracep, try_, backtracking_one_of
+    bind, map, binds, maps, tracep, try_, backtracking_one_of, success
 };

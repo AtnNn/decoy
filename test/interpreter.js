@@ -1,14 +1,14 @@
 let {eval, eval_defs, strict, record} = require('../src/interpreter');
-let {expression, toplevel} = require('../src/grammar');
+let {expression, toplevel, start} = require('../src/grammar');
 let {complete} = require('../src/parse');
-
-let builtins = {
-    print: x => console.log(x),
-    add: (a, b) => a + b
-};
+let builtins = require('../src/builtins.js');
 
 let test = (str, expected) => {
-    out = strict(eval(complete(expression)({data:str, position:0, scope:{}, state:{}}).value, builtins));
+    let res = complete(expression)(start(str, builtins));
+    if (res.failed) {
+	console.log('failed:', str);
+    }
+    let out = strict(eval(res.value, res.state.env));
     if (expected !== out) {
 	console.log(str);
 	console.log(out);
@@ -16,12 +16,12 @@ let test = (str, expected) => {
 };
 
 let testd = (str, expected) => {
-    let parsed = complete(toplevel)({data:str, position:0, scope:{}, state:{}});
+    let parsed = complete(toplevel)(start(str, {}));
     if (parsed.failed) {
 	console.log('input:', str);
 	console.log('unexpected parse error:', parsed);
     } else {
-	let res = strict(eval_defs(parsed.value, builtins).test);
+	let res = strict(parsed.state.env.test);
 	if (!same(res, expected)) {
 	    console.log('input:', str);
 	    console.log('unexpected result:', res);

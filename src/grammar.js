@@ -2,11 +2,20 @@ let fs = require('fs');
 let ast = require('./ast');
 let interpreter = require('./interpreter');
 let {many, many1, failed, one_of, or_else, sequence, char, digit, match, lazy,
-     value, bind, map, binds, maps, tracep, try_, backtracking_one_of} = require('./parse');
+     value, bind, map, binds, maps, tracep, try_, backtracking_one_of, success} = require('./parse');
 
 let trace = (...args) => {
     console.log('trace:', ...args);
     return args[args.length - 1];
+};
+
+let start = (data, env) => {
+    return {
+	data,
+	state: {env},
+	scope: {},
+	position: 0
+    };
 };
 
 let id_char1 = match(/[a-z_]/i);
@@ -55,17 +64,6 @@ let lambda =
     maps([bindings, token(match(/->/)), lazy(() => expression)],
 	 (params, _, body) => ast.mk_lambda(params, body));
 
-let macro_expand = syntax => input => {
-    for (let macro of input.state.macros || []) {
-	let m = interpreter.match(macro.pattern, syntax);
-	if (!m.failed) {
-	    let val = eval(macro.body, {...input.state.macro_env, ...m.env});
-	    return success(val)(input);
-	}
-    }
-    return success(syntax)(input);
-};
-
 let expression = backtracking_one_of([lambda, lazy(() => application), lazy(() => expression1)]);
 
 let many2 = parser =>
@@ -93,20 +91,27 @@ let definition =
 let struct = maps([token(match(/struct/)), identifier, parens(many(identifier))],
 		  (_, name, fields) => ast.mk_struct(name, fields));
 
-let macro = binds([token(match(/macro/)), expression, token(match(/:=/)), expression],
-		  (_, pattern, __, body) => input => {
-		      let m = ast.mk_macro(pattern, body);
-		      let res = success(input, m);
-		      res.state = { ...res.state, macros: [...(res.state.macros||[]), m]};
-		      return res;
-		  });
-
-let declaration = backtracking_one_of([struct, macro, antiquote, definition]);
+let declaration = backtracking_one_of([struct, antiquote, definition]);
 
 let toplevel =
-    maps([empty_space, many(maps([declaration, token(char(';'))], decl => decl))],
-	 (_, decls) => decls);
+    maps([empty_space, many(binds([declaration, token(char(';'))], (decl, _) => extend_env(decl)))],
+	 (_, __) => null);
+
+let extend_env = decl => input => {
+    let decls = expand_decl(decl, input.state.env);
+    let env = interpreter.eval_defs(decls, input.state.env);
+    let res = success(null)(input);
+    res.state.env = env;
+    return res;
+};
+
+let expand_decl = (decl, env) => {
+    if (ast.is_antiquote(decl)) {
+	return [eval(decl.fields.expression, env)];
+    }
+    return [decl];
+};
 
 module.exports = {
-    toplevel, declaration, definition, expression, identifier, application, string, string_char
+    toplevel, declaration, definition, expression, identifier, application, string, string_char, start
 };

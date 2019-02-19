@@ -1,11 +1,12 @@
 let {match, one_of, map, char, complete, many, try_, sequence} = require('../src/parse');
-let {toplevel, declaration, definition, identifier, expression, application, string, string_char} = require('../src/grammar');
+let {toplevel, declaration, definition, identifier, expression, application, string, string_char, start} = require('../src/grammar');
 let util = require('util');
+let builtins = require('../src/builtins');
 
 let dump = (s, x) => console.log(s + ':', util.inspect(x, false, null, true));
 
 let test = (parser, str) => {
-    let res = complete(parser)({data:str, position:0, state:{}, scope:{}});
+    let res = complete(parser)(start(str, builtins));
     if(res.failed) {
 	dump('input', str);
 	console.log('unexpected failure at ' + res.position + ':', res.reason);
@@ -13,7 +14,7 @@ let test = (parser, str) => {
 };
 
 let test_fail = (parser, str, position) => {
-    let res = complete(parser)({data:str, position:0, state:{}, scope:{}});
+    let res = complete(parser)(start(str, builtins));
     if(!res.failed || res.position !== position) {
 	dump('input', str);
 	dump('unexpected success', res);
@@ -21,9 +22,9 @@ let test_fail = (parser, str, position) => {
 };
 
 test(match(/bar/), 'bar');
-test_fail(one_of([sequence([match(/b/), match(/a/)]), match(/bc/)]), 'bc', 1);
 test(one_of([match(/a/), match(/b/)]), 'b');
 test(map(char('a'), a => a), 'a');
+test_fail(one_of([sequence([match(/b/), match(/a/)]), match(/bc/)]), 'bc', 1);
 test(identifier, 'abc');
 test(definition, 'foo := bar')
 test(declaration, 'foo := bar')
@@ -38,3 +39,4 @@ test(expression, '"\\n"')
 test(expression, '(c a t) "foo" "bar"')
 test(declaration, 'main := print "hello"')
 test(toplevel, 'main := print "hello";')
+test(declaration, 'macro f x := ${g $x}')

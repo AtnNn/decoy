@@ -10,7 +10,6 @@ let records = {
     struct: ['name', 'fields'],
     switch: ['value', 'cases'],
     case: ['pattern', 'body'],
-    macro: ['pattern', 'body'],
     quote: ['ast'],
     antiquote: ['expression']
 };
