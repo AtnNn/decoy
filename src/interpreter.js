@@ -34,7 +34,20 @@ let eval = (expr, env) => {
     if (ast.is_switch(expr)) {
 	return switch_(eval(expr.fields.value, env), expr.fields.cases, env);
     }
+    if (ast.is_quote(expr)) {
+	return ast.reduce(expr.fields.ast, syntax => quote1(syntax, env));
+    }
+    if (ast.is_antiquote(expr)) {
+	return eval(strict(eval(expr.fields.expression, expr.fields.parse_env)), env);
+    }
     throw new Error('invalid expression');
+};
+
+let quote1 = (syntax, env) => {
+    if (ast.is_antiquote(syntax)) {
+	return eval(syntax.expression, env);
+    }
+    return syntax;
 };
 
 let call = exprs => {
@@ -84,6 +97,7 @@ let struct = (name, infields, env) => {
 };
 
 let match = (pattern, val) => {
+    val = strict(val);
     if (ast.is_identifier(pattern)) {
 	return { env: { [pattern.fields.name]: val } };
     }

@@ -80,7 +80,7 @@ let switch_ = maps([token(match(/switch/)), parens(expression), many(case_)],
 
 let quote = maps([token(match(/\$\{/)), lazy(() => backtracking_one_of([declaration, expression])), token(match(/}/))], (_, x, __) => ast.mk_quote(x));
 
-let antiquote = maps([dollar, lazy(() => expression1)], (_, x) => ast.mk_antiquote(x));
+let antiquote = binds([dollar, lazy(() => expression1)], (_, x) => input => success(ast.mk_antiquote(x, input.state.env))(input));
 
 let expression1 = one_of([try_(switch_), quote, antiquote, try_(atom), parens(lazy(() => expression))]);
 
