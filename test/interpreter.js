@@ -59,3 +59,4 @@ testd('struct f (a b); test := (switch (f 1 2) (f a b): a;);', 1n);
 testd('x := ${1}; test := $x;', 1n);
 testd('x := ${a}; test := (a -> $x) 1;', 1n);
 testd('x := ${a}; test := switch (x) (identifier n): n;;', "a");
+testd('ite := i t e -> (switch (i) true: t; false: e;); test := ite true 1 2;', 1n);

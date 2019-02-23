@@ -51,7 +51,7 @@ let quote1 = (syntax, env) => {
 };
 
 let call = exprs => {
-    let fun = exprs[0];
+    let fun = strict(exprs[0])
     let args = exprs.slice(1);
     while (args.length > 0) {
 	let n = Math.min(fun.length, args.length);
