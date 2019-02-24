@@ -58,7 +58,7 @@ let binding_application =
     parens(maps([identifier, lazy(() => bindings)],
 		(x, xs) => ast.mk_application([x, ...xs])));
 
-let bindings = many1(backtracking_one_of([identifier, binding_application]));
+let bindings = many1(backtracking_one_of([lazy(() => quote), identifier, binding_application]));
 
 let lambda =
     maps([bindings, token(match(/->/)), lazy(() => expression)],

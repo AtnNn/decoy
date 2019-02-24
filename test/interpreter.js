@@ -7,11 +7,14 @@ let test = (str, expected) => {
     let res = complete(expression)(start(str, builtins));
     if (res.failed) {
 	console.log('failed:', str);
+	console.log('error:', res.position, res.reason);
+	return;
     }
     let out = strict(eval(res.value, res.state.env));
     if (expected !== out) {
-	console.log(str);
-	console.log(out);
+	console.log('test failed:', str);
+	console.log('expected:', expected);
+	console.log('actual:', out);
     }
 };
 
@@ -60,3 +63,6 @@ testd('x := ${1}; test := $x;', 1n);
 testd('x := ${a}; test := (a -> $x) 1;', 1n);
 testd('x := ${a}; test := switch (x) (identifier n): n;;', "a");
 testd('ite := i t e -> (switch (i) true: t; false: e;); test := ite true 1 2;', 1n);
+
+test('(${add $(number a) $(number b)} -> add a b) ${add 1 2}', 3n);
+test('(${1} -> 2) ${1}', 2n)

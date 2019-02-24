@@ -35,19 +35,13 @@ let eval = (expr, env) => {
 	return switch_(eval(expr.fields.value, env), expr.fields.cases, env);
     }
     if (ast.is_quote(expr)) {
-	return ast.reduce(expr.fields.ast, syntax => quote1(syntax, env));
+	return quasiquote(expr.fields.ast, env);
     }
     if (ast.is_antiquote(expr)) {
 	return eval(strict(eval(expr.fields.expression, expr.fields.parse_env)), env);
     }
+    console.log('invalid:', expr);
     throw new Error('invalid expression');
-};
-
-let quote1 = (syntax, env) => {
-    if (ast.is_antiquote(syntax)) {
-	return eval(syntax.expression, env);
-    }
-    return syntax;
 };
 
 let call = exprs => {
@@ -77,7 +71,7 @@ let lambda = (params, body, env) => {
 	fun = env => x => {
 	    let res = match(param, x);
 	    if (res.failed) {
-		throw new Error('failed match');
+		throw new Error('failed match: ' + res.reason);
 	    }
 	    return nextf({...env, ...res.env});
 	};
@@ -97,6 +91,9 @@ let struct = (name, infields, env) => {
 };
 
 let match = (pattern, val) => {
+    if (ast.is_quote(pattern)) {
+	pattern = quote_binding(pattern.fields.ast);
+    }
     val = strict(val);
     if (ast.is_identifier(pattern)) {
 	return { env: { [pattern.fields.name]: val } };
@@ -105,7 +102,9 @@ let match = (pattern, val) => {
 	if(val instanceof record && val.name === pattern.fields.children[0].fields.name) {
 	    let params = pattern.fields.children.slice(1);
 	    if (params.length != val.field_names.length) {
-		return {failed: true};
+		return {
+		    failed: true,
+		    reason: "param count mismatch in " + val.name};
 	    }
 	    let env = {};
 	    for (let i in params) {
@@ -117,8 +116,38 @@ let match = (pattern, val) => {
 	    }
 	    return {env};
 	}
-	return {failed: true};
+	return {
+	    failed: true,
+	    reason: val.name + " does not match " + pattern.fields.children[0].fields.name
+	};
     }
+    if (typeof(pattern) === 'bigint' || typeof(pattern) === 'string') {
+	if (val === pattern) {
+	    return {env: {}};
+	}
+	return {failed: true,
+		reason: val + " !== " + pattern};
+    }
+    if (Array.isArray(pattern)) {
+	if (!Array.isArray(val)) {
+	    return {failed: true,
+		    reason: 'expected array'};
+	}
+	if (pattern.length != val.length) {
+	    return {failed: true,
+		    reason: 'expected arrays of same length'};
+	}
+	let env = {};
+	for (let index in pattern) {
+	    let res = match(pattern[index], val[index]);
+	    if (res.failed) {
+		return res;
+	    }
+	    env = { ...env, ...res.env };
+	}
+	return {env};
+    }
+    console.log('invalid pattern:', pattern);
     throw new Error('invalid pattern');
 }
 
@@ -130,6 +159,89 @@ let switch_ = (value, cases, env) => {
 	}
     }
     throw new Error('no matching case');
+};
+
+let quote_binding = quoted => {
+    let q = quote_binding;
+    let app = (name, ...args) => {
+	return ast.mk_application([ast.mk_identifier(name), ...args]);
+    };
+    if (ast.is_antiquote(quoted)) {
+	return quoted.fields.expression;
+    }
+    if (ast.is_declaration(quoted)) {
+	return app('declaration', q(quots.fields.lhs), q(quots.fields.rhs));
+    }
+    if (ast.is_application(quoted)) {
+	return app('application', quoted.fields.children.map(q));
+    }
+    if (ast.is_number(quoted)) {
+	return app('number', quoted.fields.value)
+    }
+    if (ast.is_string(quoted)) {
+	return app('string', quoted.fields.value)
+    }
+    if (ast.is_lambda(quoted)) {
+	return app('lambda', quoted.fields.params.map(q), q(quoted.fields.body));
+    }
+    if (ast.is_struct(quoted)) {
+	return app('struct', q(quoted.fields.name), quoted.fields.fields.map(q));
+    }
+    if (ast.is_switch(quoted)) {
+	return app('switch', q(quoted.fields.value), quoted.fields.cases.map(q));
+    }
+    if (ast.is_case(quoted)) {
+	return app('case', q(quoted.fields.pattern), q(quoted.fields.value));
+    }
+    if (ast.is_quote(quoted)) {
+	return app('quote', quote(quoted.fields.ast,
+				  antiquoted => {
+				      throw new Error("nested quote binding with antiquote not implemented");
+				  }));
+    }
+    if (ast.is_identifier(quoted)) {
+	return app('identifier', quoted.fields.name);
+    }
+    throw new Error('quote_binding: unknown syntax');
+};
+
+let quasiquote = (quoted, env) => {
+    let q = syntax => quasiquote(syntax, env);
+    if (ast.is_antiquote(quoted)) {
+	return eval(quoted.fields.expression, env);
+    }
+    if (ast.is_declaration(quoted)) {
+	return mk_declaration(q(quots.fields.lhs), q(quots.fields.rhs));
+    }
+    if (ast.is_application(quoted)) {
+	return ast.mk_application(quoted.fields.children.map(q));
+    }
+    if (ast.is_number(quoted)) {
+	return quoted;
+    }
+    if (ast.is_string(quoted)) {
+	return quoted;
+    }
+    if (ast.is_lambda(quoted)) {
+	return ast.mk_lambda(quoted.fields.params.map(q), q(quoted.fields.body));
+    }
+    if (ast.is_struct(quoted)) {
+	return ast.mk_struct(q(quoted.fields.name), quoted.fields.fields.map(q));
+    }
+    if (ast.is_switch(quoted)) {
+	return ast.mk_switch(q(quoted.fields.value), quoted.fields.cases.map(q));
+    }
+    if (ast.is_case(quoted)) {
+	return ast.mk_case(q(quoted.fields.pattern), q(quoted.fields.value));
+    }
+    if (ast.is_quote(quoted)) {
+	return quoted;
+    }
+    if (ast.is_identifier(quoted)) {
+	return quoted;
+    }
+    console.log('unkown syntax:', quoted);
+    throw new Error('quasiquote: unknown syntax');
 };
 
 module.exports = { eval_defs, strict, eval, record };
