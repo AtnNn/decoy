@@ -1,13 +1,5 @@
-let {complete} = require('./parse');
-let {toplevel, start} = require('./grammar');
-let {eval_defs, strict} = require('./interpreter');
-let fs = require('fs');
-let builtins = require('./builtins');
+let { decoy, decoy_import } = require('./decoy');
 
-let source = fs.readFileSync(process.argv[2]).toString('utf8');
-let res = complete(toplevel)(start(source, builtins));
-if (res.failed) {
-    console.log('parsing failed at ' + res.position + ': ' + res.reason);
-} else {
-    strict(res.state.env.main);
-}
+
+decoy_import(process.argv[2]);
+decoy('main');

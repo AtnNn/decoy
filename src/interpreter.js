@@ -244,4 +244,4 @@ let quasiquote = (quoted, env) => {
     throw new Error('quasiquote: unknown syntax');
 };
 
-module.exports = { eval_defs, strict, eval, record };
+module.exports = { eval_defs, strict, eval, record, call };
