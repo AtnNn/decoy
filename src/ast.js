@@ -11,7 +11,8 @@ let records = {
     switch: ['value', 'cases'],
     case: ['pattern', 'body'],
     quote: ['ast'],
-    antiquote: ['expression', 'parse_env']
+    antiquote: ['expression', 'parse_env'],
+    access: ['namespace', 'name']
 };
 
 for (let name in records) {

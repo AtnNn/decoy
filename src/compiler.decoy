@@ -1,0 +1,5 @@
+main :=
+  compile_toplevel (toplevel (start (read_file (nth 0 process_arguments)) builtins)).env;
+
+compile_toplevel := env -> each env (name syntax ->
+  

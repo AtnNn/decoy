@@ -82,7 +82,17 @@ let quote = maps([token(match(/\$\{/)), lazy(() => backtracking_one_of([declarat
 
 let antiquote = binds([dollar, lazy(() => expression1)], (_, x) => input => success(ast.mk_antiquote(x, input.state.env))(input));
 
-let expression1 = one_of([try_(switch_), quote, antiquote, try_(atom), parens(lazy(() => expression))]);
+let expression2 =
+    maps([one_of([try_(atom), parens(lazy(() => expression))]),
+	  many(maps([token(char('.')), identifier], (_, n) => n))],
+	(expr, accesses) => {
+	    for (let name of accesses) {
+		expr = ast.mk_access(expr, name);
+	    }
+	    return expr;
+	});
+
+let expression1 = one_of([try_(switch_), quote, antiquote, expression2]);
 
 let definition =
     maps([expression, token(match(/:=/)), expression],

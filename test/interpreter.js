@@ -3,8 +3,10 @@ let {expression, toplevel, start} = require('../src/grammar');
 let {complete} = require('../src/parse');
 let builtins = require('../src/builtins.js');
 
+let env = { ...builtins, a: {b: 1n} };
+
 let test = (str, expected) => {
-    let res = complete(expression)(start(str, builtins));
+    let res = complete(expression)(start(str, env));
     if (res.failed) {
 	console.log('failed:', str);
 	console.log('error:', res.position, res.reason);
@@ -19,7 +21,7 @@ let test = (str, expected) => {
 };
 
 let testd = (str, expected) => {
-    let parsed = complete(toplevel)(start(str, {}));
+    let parsed = complete(toplevel)(start(str, env));
     if (parsed.failed) {
 	console.log('input:', str);
 	console.log('unexpected parse error:', parsed);
@@ -66,3 +68,6 @@ testd('ite := i t e -> (switch (i) true: t; false: e;); test := ite true 1 2;', 
 
 test('(${add $(number a) $(number b)} -> add a b) ${add 1 2}', 3n);
 test('(${1} -> 2) ${1}', 2n)
+
+test('a.b', 1n)
+testd('struct f (a); test := (f 1).a;', 1n)

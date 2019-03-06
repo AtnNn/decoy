@@ -40,6 +40,9 @@ let eval = (expr, env) => {
     if (ast.is_antiquote(expr)) {
 	return eval(strict(eval(expr.fields.expression, expr.fields.parse_env)), env);
     }
+    if (ast.is_access(expr)) {
+	return access(strict(eval(expr.fields.namespace, env)), expr.fields.name.fields.name);
+    }
     console.log('invalid:', expr);
     throw new Error('invalid expression');
 };
@@ -244,4 +247,19 @@ let quasiquote = (quoted, env) => {
     throw new Error('quasiquote: unknown syntax');
 };
 
-module.exports = { eval_defs, strict, eval, record, call };
+let access = (namespace, name) => {
+    let obj = {};
+    if (namespace instanceof record) {
+	obj = namespace.fields;
+    } else if (namespace.constructor = Object) {
+	obj = namespace;
+    } else {
+	throw new Error("accessing field '" + name + "' of non-namespace");
+    }
+    if (!obj.hasOwnProperty(name)) {
+	throw new Error("namespace does not contain '" + name + "'");
+    }
+    return obj[name];
+};
+
+module.exports = { eval_defs, strict, eval, record, call, struct };
