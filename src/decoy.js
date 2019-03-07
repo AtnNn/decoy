@@ -28,4 +28,8 @@ let decoy_import = path => {
     env = res.state.env;
 };
 
-module.exports = { decoy, decoy_import };
+let decoy_define = (name, val) => {
+    env[name] = val;
+};
+
+module.exports = { decoy, decoy_import, decoy_define };
