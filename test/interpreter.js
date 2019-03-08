@@ -12,7 +12,7 @@ let test = (str, expected) => {
 	console.log('error:', res.position, res.reason);
 	return;
     }
-    let out = strict(eval(res.value, res.state.env));
+    let out = strict(eval(res.value, { ...env, ...res.state.locals }));
     if (expected !== out) {
 	console.log('test failed:', str);
 	console.log('expected:', expected);
@@ -26,7 +26,7 @@ let testd = (str, expected) => {
 	console.log('input:', str);
 	console.log('unexpected parse error:', parsed);
     } else {
-	let res = strict(parsed.state.env.test);
+	let res = strict(parsed.state.locals.test);
 	if (!same(res, expected)) {
 	    console.log('input:', str);
 	    console.log('unexpected result:', res);

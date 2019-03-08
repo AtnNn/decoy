@@ -2,17 +2,18 @@ let ast = require('./ast');
 let {record} = require('./data');
 
 let eval_defs = (defs, initial_env) => {
-    let env = {...initial_env};
+    let new_env = {};
     for (let def of defs) {
+	let env = {...initial_env, ...new_env};
 	if (ast.is_struct(def)) {
-	    env[def.fields.name.fields.name] = struct(def.fields.name.fields.name, def.fields.fields.map(x => x.fields.name), env);
+	    new_env[def.fields.name.fields.name] = struct(def.fields.name.fields.name, def.fields.fields.map(x => x.fields.name), env);
 	} else if (ast.is_declaration(def)) {
-	    env[def.fields.lhs.fields.name] = () => eval(def.fields.rhs, env);
+	    new_env[def.fields.lhs.fields.name] = () => eval(def.fields.rhs, env);
 	} else {
 	    throw new Error('unknown def');
 	}
     }
-    return env;
+    return new_env;
 };
 
 let eval = (expr, env) => {

@@ -9,10 +9,10 @@ let trace = (...args) => {
     return args[args.length - 1];
 };
 
-let start = (data, env) => {
+let start = (data, globals) => {
     return {
 	data,
-	state: {env},
+	state: {globals, locals: {}},
 	scope: {},
 	position: 0
     };
@@ -80,7 +80,7 @@ let switch_ = maps([token(match(/switch/)), parens(expression), many(case_)],
 
 let quote = maps([token(match(/\$\{/)), lazy(() => backtracking_one_of([declaration, expression])), token(match(/}/))], (_, x, __) => ast.mk_quote(x));
 
-let antiquote = binds([dollar, lazy(() => expression1)], (_, x) => input => success(ast.mk_antiquote(x, input.state.env))(input));
+let antiquote = binds([dollar, lazy(() => expression1)], (_, x) => input => success(ast.mk_antiquote(x, {...input.state.globals, ...input.state.locals}))(input));
 
 let expression2 =
     maps([one_of([try_(atom), parens(lazy(() => expression))]),
@@ -108,10 +108,11 @@ let toplevel =
 	 (_, __) => null);
 
 let extend_env = decl => input => {
-    let decls = expand_decl(decl, input.state.env);
-    let env = interpreter.eval_defs(decls, input.state.env);
+    let env = { ...input.state.globals, ...input.state.locals };
+    let decls = expand_decl(decl, env);
+    let new_env = interpreter.eval_defs(decls, env);
     let res = success(null)(input);
-    res.state.env = env;
+    res.state.locals = { ...res.state.locals, ...new_env };
     return res;
 };
 

@@ -25,7 +25,7 @@ let decoy_import = path => {
     if (res.failed) {
 	throw new Error(path + ': parsing failed at ' + res.position + ': ' + res.reason);
     }
-    env = res.state.env;
+    env = { ...env, ...res.state.locals };
 };
 
 let decoy_define = (name, val) => {
