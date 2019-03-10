@@ -1,7 +1,7 @@
 let ast = require('./ast');
 let {record} = require('./data');
 
-// let eval_trace = (...args) => console.log('eval', ...args);
+//let eval_trace = (...args) => console.log('eval', ...args);
 let eval_trace = (..._) => null;
 
 let eval_defs = (defs, env) => {

@@ -1,14 +1,12 @@
-main :=
-  (env -> do
-    (toplevel (start (read_file (nth 0 process_arguments)) env))
-    (compile_toplevel env)) new_env;
+main := compile_toplevel ((complete toplevel) (start (read_file (nth 0 process_arguments)) new_env)).value;
 
-compile_toplevel := env -> for env (name syntax -> do
-  (write "let ") (write name) (write " = ")
-  (compile syntax)
-  (write ";\n")
-  (write "module.exports.") (write name) (write " = ") (write name)
-  (write ";\n\n"));
+compile_toplevel := decls -> for decls (decl -> switch (decl)
+  (declaration (identifier name) rhs): do
+    (write "let ") (write name) (write " = ")
+    (compile rhs)
+    (write ";\n")
+    (write "module.exports.") (write name) (write " = ") (write name)
+    (write ";\n\n"););
 
 compile := syntax -> switch (syntax)
-  number i: do (write i) (write "n");;
+  (number i): do (write i) (write "n");;

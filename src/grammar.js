@@ -105,12 +105,12 @@ let declaration = backtracking_one_of([struct, antiquote, definition]);
 
 let toplevel =
     maps([empty_space, many(binds([declaration, token(char(';'))], (decl, _) => extend_env(decl)))],
-	 (_, __) => null);
+	 (_, declss) => declss.flat());
 
 let extend_env = decl => input => {
     let decls = expand_decl(decl, input.scope.env);
     interpreter.eval_defs(decls, input.scope.env);
-    return success(null)(input);
+    return success(decls)(input);
 };
 
 let expand_decl = (decl, env) => {

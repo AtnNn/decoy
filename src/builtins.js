@@ -1,9 +1,10 @@
 let fs = require('fs');
 let {strict, struct, special_function, call} = require('./interpreter');
 let {toplevel, start} = require('./grammar');
+let {complete} = require('./parse');
 
 let builtins = {
-    toplevel, start,
+    toplevel, start, complete,
     add: (a, b) => a + b,
     write: x => process.stdout.write(`${x}`),
     print: x => console.log(x),
