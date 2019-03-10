@@ -1,5 +1,5 @@
 let fs = require('fs');
-let {strict, struct} = require('./interpreter');
+let {strict, struct, special_function} = require('./interpreter');
 let {toplevel, start} = require('./grammar');
 
 let builtins = {
@@ -22,11 +22,13 @@ let builtins = {
 	throw new Error('for: argument is not an array or object');
     },
     nth: (i, array) => array[i],
-    do: (...args) => {
+    do: new special_function((...args) => {
+	let val;
 	for (let arg in args) {
-	    strict(arg);
+	    val = strict(arg);
 	}
-    },
+	return val;
+    }),
     new_env: () => ({ __parent_scope: builtins }),
     read_file: path => fs.readFileSync(path).toString('utf8')
 };

@@ -6,7 +6,6 @@ let eval_defs = (defs, env) => {
 	if (ast.is_struct(def)) {
 	    env[def.fields.name.fields.name] = struct(def.fields.name.fields.name, def.fields.fields.map(x => x.fields.name));
 	} else if (ast.is_declaration(def)) {
-	    console.log('eval_defs env', Object.keys(env));
 	    env[def.fields.lhs.fields.name] = thunk(() => eval(def.fields.rhs, env));
 	} else {
 	    throw new Error('unknown def');
@@ -60,6 +59,9 @@ let lookup = (env, name) => {
     if (name in env) {
 	return env[name];
     }
+    if (name === 'name') {
+	console.log('name not found:', Object.keys(env));
+    }
     if ('__parent_scope' in env) {
 	return lookup(env.__parent_scope, name);
     }
@@ -69,11 +71,15 @@ let lookup = (env, name) => {
 let call = exprs => {
     let fun = strict(exprs[0])
     let args = exprs.slice(1);
+    if (fun instanceof special_function) {
+	return fun.special(args);
+    }
     while (args.length > 0) {
-	let n = fun.length == 0 && args.length > 0 ?
-	    args.length
-	    : Math.min(fun.length, args.length);
-	console.log('call', fun.name, args.slice(0,n));
+	if (!(fun instanceof Function)) {
+	    console.log('not a function:', fun);
+	    throw new Error('call: not a function');
+	}
+	let n = Math.min(fun.length, args.length);
 	fun = fun.apply(undefined, args.slice(0, n));
 	args = args.slice(n);
     }
@@ -286,4 +292,8 @@ let access = (namespace, name) => {
     return obj[name];
 };
 
-module.exports = { eval_defs, strict, eval, record, call, struct };
+function special_function(f) {
+    this.special = f;
+}
+
+module.exports = { eval_defs, strict, eval, record, call, struct, special_function };

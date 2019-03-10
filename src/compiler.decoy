@@ -5,10 +5,10 @@ main :=
 
 compile_toplevel := env -> for env (name syntax -> do
   (print "let ") (print name) (print " = ")
-  (compile syntax))
+  (compile syntax)
   (print ";\n")
   (print "module.exports.") (print name) (print " = ") (print name)
-  (print ";\n\n");
+  (print ";\n\n"));
 
 compile syntax := switch (syntax)
   numer n: do (print n) (print "n");;
