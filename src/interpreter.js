@@ -1,6 +1,9 @@
 let ast = require('./ast');
 let {record} = require('./data');
 
+// let eval_trace = (...args) => console.log('eval', ...args);
+let eval_trace = (..._) => null;
+
 let eval_defs = (defs, env) => {
     for (let def of defs) {
 	if (ast.is_struct(def)) {
@@ -25,6 +28,7 @@ let thunk = f => {
 
 let eval = (expr, env) => {
     if (ast.is_identifier(expr)) {
+	eval_trace('lookup:', expr.fields.name);
 	return lookup(env, expr.fields.name);
     }
     if (ast.is_number(expr)) {
@@ -34,12 +38,15 @@ let eval = (expr, env) => {
 	return expr.fields.value;
     }
     if (ast.is_application(expr)) {
-	return call(expr.fields.children.map(x => eval(x, env)));
+	eval_trace('application:', expr.fields.children);
+	let children = expr.fields.children.map(x => eval(x, env));
+	return call(children);
     }
     if (ast.is_lambda(expr)) {
 	return lambda(expr.fields.params, expr.fields.body, env);
     }
     if (ast.is_switch(expr)) {
+	eval_trace('switch:', expr.fields.value);
 	return switch_(eval(expr.fields.value, env), expr.fields.cases, env);
     }
     if (ast.is_quote(expr)) {
@@ -51,16 +58,13 @@ let eval = (expr, env) => {
     if (ast.is_access(expr)) {
 	return access(strict(eval(expr.fields.namespace, env)), expr.fields.name.fields.name);
     }
-    console.log('invalid:', expr);
+    eval_trace('invalid:', expr);
     throw new Error('invalid expression');
 };
 
 let lookup = (env, name) => {
     if (name in env) {
 	return env[name];
-    }
-    if (name === 'name') {
-	console.log('name not found:', Object.keys(env));
     }
     if ('__parent_scope' in env) {
 	return lookup(env.__parent_scope, name);
@@ -72,15 +76,14 @@ let call = exprs => {
     let fun = strict(exprs[0])
     let args = exprs.slice(1);
     if (fun instanceof special_function) {
-	return fun.special(args);
+	return fun.special(...args);
     }
     while (args.length > 0) {
 	if (!(fun instanceof Function)) {
-	    console.log('not a function:', fun);
 	    throw new Error('call: not a function');
 	}
 	let n = Math.min(fun.length, args.length);
-	fun = fun.apply(undefined, args.slice(0, n));
+	fun = fun(...args.slice(0, n));
 	args = args.slice(n);
     }
     return fun;
@@ -89,6 +92,7 @@ let call = exprs => {
 let strict = f => {
     while (f instanceof Function && f.length == 0) {
 	f = f();
+	eval_trace('stricted:', f);
     }
     return f;
 };
@@ -106,6 +110,7 @@ let lambda = (params, body, outer_env) => {
 	    if (res.failed) {
 		throw new Error('failed match: ' + res.reason);
 	    }
+	    eval_trace('lambda bound:', res.env);
 	    return nextf({...inner_env, ...res.env});
 	};
     }
@@ -129,6 +134,7 @@ let match = (pattern, val) => {
     }
     val = strict(val);
     if (ast.is_identifier(pattern)) {
+	eval_trace('match identifier:', pattern.fields.name, val);
 	return { env: { [pattern.fields.name]: val } };
     }
     if (ast.is_application(pattern)) {
@@ -180,7 +186,7 @@ let match = (pattern, val) => {
 	}
 	return {env};
     }
-    console.log('invalid pattern:', pattern);
+    eval_trace('invalid pattern:', pattern);
     throw new Error('invalid pattern');
 }
 
@@ -273,7 +279,7 @@ let quasiquote = (quoted, env) => {
     if (ast.is_identifier(quoted)) {
 	return quoted;
     }
-    console.log('unkown syntax:', quoted);
+    eval_trace('unkown syntax:', quoted);
     throw new Error('quasiquote: unknown syntax');
 };
 

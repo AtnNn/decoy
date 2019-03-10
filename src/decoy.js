@@ -11,10 +11,8 @@ let decoy = (source) => {
     let res = parse.complete(grammar.expression)(grammar.start(source, env));
     if (!res.failed) {
 	let val = interpreter.eval(res.value, env);
-	console.log('evalled', source);
 	val = interpreter.strict(val);
 	if (typeof(val) == 'function') {
-	    console.log('decoy fun')
 	    return (...args) => interpreter.call([val, ...args]);
 	}
 	return val;
