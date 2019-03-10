@@ -1,5 +1,7 @@
 main :=
-  compile_toplevel (toplevel (start (read_file (nth 0 process_arguments)) builtins)).env;
+  (env -> do
+    (toplevel (start (read_file (nth 0 process_arguments)) env))
+    (compile_toplevel env)) new_env;
 
 compile_toplevel := env -> for env (name syntax -> do
   (print "let ") (print name) (print " = ")

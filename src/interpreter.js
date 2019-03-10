@@ -1,24 +1,32 @@
 let ast = require('./ast');
 let {record} = require('./data');
 
-let eval_defs = (defs, initial_env) => {
-    let new_env = {};
+let eval_defs = (defs, env) => {
     for (let def of defs) {
-	let env = {...initial_env, ...new_env};
 	if (ast.is_struct(def)) {
-	    new_env[def.fields.name.fields.name] = struct(def.fields.name.fields.name, def.fields.fields.map(x => x.fields.name), env);
+	    env[def.fields.name.fields.name] = struct(def.fields.name.fields.name, def.fields.fields.map(x => x.fields.name));
 	} else if (ast.is_declaration(def)) {
-	    new_env[def.fields.lhs.fields.name] = () => eval(def.fields.rhs, env);
+	    console.log('eval_defs env', Object.keys(env));
+	    env[def.fields.lhs.fields.name] = thunk(() => eval(def.fields.rhs, env));
 	} else {
 	    throw new Error('unknown def');
 	}
     }
-    return new_env;
+};
+
+let thunk = f => {
+    let val = undefined;
+    return () => {
+	if (val === undefined) {
+	    val = f();
+	}
+	return val;
+    };
 };
 
 let eval = (expr, env) => {
     if (ast.is_identifier(expr)) {
-	return env[expr.fields.name];
+	return lookup(env, expr.fields.name);
     }
     if (ast.is_number(expr)) {
 	return expr.fields.value;
@@ -48,11 +56,24 @@ let eval = (expr, env) => {
     throw new Error('invalid expression');
 };
 
+let lookup = (env, name) => {
+    if (name in env) {
+	return env[name];
+    }
+    if ('__parent_scope' in env) {
+	return lookup(env.__parent_scope, name);
+    }
+    throw new Error('identifier not in scope: ' + name);
+};
+
 let call = exprs => {
     let fun = strict(exprs[0])
     let args = exprs.slice(1);
     while (args.length > 0) {
-	let n = Math.min(fun.length, args.length);
+	let n = fun.length == 0 && args.length > 0 ?
+	    args.length
+	    : Math.min(fun.length, args.length);
+	console.log('call', fun.name, args.slice(0,n));
 	fun = fun.apply(undefined, args.slice(0, n));
 	args = args.slice(n);
     }
@@ -66,24 +87,26 @@ let strict = f => {
     return f;
 };
 
-let lambda = (params, body, env) => {
+let lambda = (params, body, outer_env) => {
     params = [...params];
     params.reverse();
-    let fun = env => eval(body, env);
+    let fun = inner_env => {
+	return eval(body, { __parent_scope: outer_env, ...inner_env });
+    };
     for (let param of params) {
 	let nextf = fun;
-	fun = env => x => {
+	fun = inner_env => x => {
 	    let res = match(param, x);
 	    if (res.failed) {
 		throw new Error('failed match: ' + res.reason);
 	    }
-	    return nextf({...env, ...res.env});
+	    return nextf({...inner_env, ...res.env});
 	};
     }
-    return fun(env);
+    return fun({});
 };
 
-let struct = (name, infields, env) => {
+let struct = (name, infields) => {
     fields = [...infields];
     fields.reverse();
     let fun = obj => new record(name, obj, infields);
@@ -159,7 +182,7 @@ let switch_ = (value, cases, env) => {
     for (let case_ of cases) {
 	let res = match(case_.fields.pattern[0], value);
 	if (!res.failed) {
-	    return eval(case_.fields.body, { ...env, ...res.env });
+	    return eval(case_.fields.body, { __parent_scope: env, ...res.env });
 	}
     }
     throw new Error('no matching case');

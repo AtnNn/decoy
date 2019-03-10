@@ -17,3 +17,4 @@
 - Threading
 - Backtracking
 - CSP
+- Spaces in names

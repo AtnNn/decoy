@@ -3,7 +3,7 @@ let {expression, toplevel, start} = require('../src/grammar');
 let {complete} = require('../src/parse');
 let builtins = require('../src/builtins.js');
 
-let env = { ...builtins, a: {b: 1n} };
+let env = { __parent_scope: builtins, a: {b: 1n} };
 
 let test = (str, expected) => {
     let res = complete(expression)(start(str, env));
@@ -12,7 +12,7 @@ let test = (str, expected) => {
 	console.log('error:', res.position, res.reason);
 	return;
     }
-    let out = strict(eval(res.value, { ...env, ...res.state.locals }));
+    let out = strict(eval(res.value, env));
     if (expected !== out) {
 	console.log('test failed:', str);
 	console.log('expected:', expected);
@@ -26,7 +26,7 @@ let testd = (str, expected) => {
 	console.log('input:', str);
 	console.log('unexpected parse error:', parsed);
     } else {
-	let res = strict(parsed.state.locals.test);
+	let res = strict(env.test);
 	if (!same(res, expected)) {
 	    console.log('input:', str);
 	    console.log('unexpected result:', res);

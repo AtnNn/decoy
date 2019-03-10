@@ -5,13 +5,16 @@ var builtins = require('./builtins');
 
 let fs = require('fs');
 
-let env = { ...builtins };
+let env = { __parent_scope: builtins };
 
 let decoy = (source) => {
     let res = parse.complete(grammar.expression)(grammar.start(source, env));
     if (!res.failed) {
-	let val = interpreter.strict(interpreter.eval(res.value, env));
+	let val = interpreter.eval(res.value, env);
+	console.log('evalled', source);
+	val = interpreter.strict(val);
 	if (typeof(val) == 'function') {
+	    console.log('decoy fun')
 	    return (...args) => interpreter.call([val, ...args]);
 	}
 	return val;
@@ -25,7 +28,6 @@ let decoy_import = path => {
     if (res.failed) {
 	throw new Error(path + ': parsing failed at ' + res.position + ': ' + res.reason);
     }
-    env = { ...env, ...res.state.locals };
 };
 
 let decoy_define = (name, val) => {

@@ -1,6 +1,9 @@
+let fs = require('fs');
 let {strict, struct} = require('./interpreter');
+let {toplevel, start} = require('./grammar');
 
 let builtins = {
+    toplevel, start,
     add: (a, b) => a + b,
     print: x => console.log(x),
     true: () => struct('true', [], builtins),
@@ -23,7 +26,9 @@ let builtins = {
 	for (let arg in args) {
 	    strict(arg);
 	}
-    }
+    },
+    new_env: () => ({ __parent_scope: builtins }),
+    read_file: path => fs.readFileSync(path).toString('utf8')
 };
 
 module.exports = builtins;
