@@ -5,19 +5,28 @@ let builtins = require('../src/builtins');
 
 let dump = (s, x) => console.log(s + ':', util.inspect(x, false, null, true));
 
+let count = 0;
+let success = 0;
+
 let test = (parser, str) => {
+    count++;
     let res = complete(parser)(start(str, builtins));
     if(res.failed) {
 	dump('input', str);
 	console.log('unexpected failure at ' + res.position + ':', res.reason);
+    } else {
+	success++;
     }
 };
 
 let test_fail = (parser, str, position) => {
+    count++;
     let res = complete(parser)(start(str, builtins));
     if(!res.failed || res.position !== position) {
 	dump('input', str);
 	dump('unexpected success', res);
+    } else {
+	success++;
     }
 };
 
@@ -43,3 +52,8 @@ test(declaration, 'macro f x := ${g $x}')
 test(expression, 'add $a $b')
 test(expression, '(${a} -> a)')
 test(expression, 'a.b')
+
+console.log('grammar:', success, 'of', count, 'passed');
+if (success != count) {
+    process.exit(1);
+}

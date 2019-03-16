@@ -3,9 +3,13 @@ let {expression, toplevel, start} = require('../src/grammar');
 let {complete} = require('../src/parse');
 let builtins = require('../src/builtins.js');
 
+let success = 0;
+let count = 0;
+
 let env = { __parent_scope: builtins, a: {b: 1n} };
 
 let test = (str, expected) => {
+    count++;
     let res = complete(expression)(start(str, env));
     if (res.failed) {
 	console.log('failed:', str);
@@ -17,10 +21,13 @@ let test = (str, expected) => {
 	console.log('test failed:', str);
 	console.log('expected:', expected);
 	console.log('actual:', out);
+    } else {
+	success++;
     }
 };
 
 let testd = (str, expected) => {
+    count++;
     let parsed = complete(toplevel)(start(str, env));
     if (parsed.failed) {
 	console.log('input:', str);
@@ -30,6 +37,8 @@ let testd = (str, expected) => {
 	if (!same(res, expected)) {
 	    console.log('input:', str);
 	    console.log('unexpected result:', res);
+	} else {
+	    success++;
 	}
     }
 };
@@ -71,3 +80,9 @@ test('(${1} -> 2) ${1}', 2n)
 
 test('a.b', 1n)
 testd('struct f (a); test := (f 1).a;', 1n)
+
+
+console.log('interpreter:', success, 'of', count, 'passed');
+if (success != count) {
+    process.exit(1);
+}
