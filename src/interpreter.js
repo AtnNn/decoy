@@ -1,9 +1,25 @@
 let ast = require('./ast');
 let {record} = require('./data');
 let {pretty_loc} = require('./parse');
+let util = require('util');
 
 //let eval_trace = (...args) => console.error('eval', ...args);
 let eval_trace = (..._) => null;
+
+function eval_error(...args) {
+    this.trace = (new Error()).stack;
+    this.message = util.format(...args);
+    this.loc = [];
+}
+
+eval_error.prototype.add_loc = function(loc) {
+    this.loc.push(loc);
+    this.message = this.message + '\n    at ' + pretty_loc(loc);
+};
+
+eval_error.prototype.toString = function() {
+    return this.message + '\n' + this.trace.replace(/^.*\n/, '');
+};
 
 let eval_defs = (defs, env) => {
     for (let def of defs) {
@@ -12,7 +28,7 @@ let eval_defs = (defs, env) => {
 	} else if (ast.is_declaration(def)) {
 	    env[def.fields.lhs.fields.name] = thunk(() => eval(def.fields.rhs, env));
 	} else {
-	    throw new Error('unknown def');
+	    throw new eval_error('unknown def', def);
 	}
     }
 };
@@ -28,39 +44,45 @@ let thunk = f => {
 };
 
 let eval = (expr, env) => {
-    if (ast.is_identifier(expr)) {
-	eval_trace('lookup:', expr.fields.name);
-	return lookup(env, expr.fields.name);
+    try {
+	if (ast.is_identifier(expr)) {
+	    eval_trace('lookup:', expr.fields.name);
+	    return lookup(env, expr.fields.name);
+	}
+	if (ast.is_number(expr)) {
+	    return expr.fields.value;
+	}
+	if (ast.is_string(expr)) {
+	    return expr.fields.value;
+	}
+	if (ast.is_application(expr)) {
+	    eval_trace('application:', expr.fields.children);
+	    let children = expr.fields.children.map(x => eval(x, env));
+	    return call(children);
+	}
+	if (ast.is_lambda(expr)) {
+	    return lambda(expr.fields.params, expr.fields.body, env);
+	}
+	if (ast.is_switch(expr)) {
+	    eval_trace('switch:', expr.fields.value);
+	    return switch_(eval(expr.fields.value, env), expr.fields.cases, env);
+	}
+	if (ast.is_quote(expr)) {
+	    return quasiquote(expr.fields.ast, env);
+	}
+	if (ast.is_antiquote(expr)) {
+	    return eval(strict(eval(expr.fields.expression, expr.fields.parse_env)), env);
+	}
+	if (ast.is_access(expr)) {
+	    return access(strict(eval(expr.fields.namespace, env)), expr.fields.name.fields.name);
+	}
+	throw new eval_error('invalid expression', expr);
+    } catch (err) {
+	if (err instanceof eval_error) {
+	    err.add_loc(expr.fields.loc);
+	}
+	throw err;
     }
-    if (ast.is_number(expr)) {
-	return expr.fields.value;
-    }
-    if (ast.is_string(expr)) {
-	return expr.fields.value;
-    }
-    if (ast.is_application(expr)) {
-	eval_trace('application:', expr.fields.children);
-	let children = expr.fields.children.map(x => eval(x, env));
-	return call(children);
-    }
-    if (ast.is_lambda(expr)) {
-	return lambda(expr.fields.params, expr.fields.body, env);
-    }
-    if (ast.is_switch(expr)) {
-	eval_trace('switch:', expr.fields.value);
-	return switch_(eval(expr.fields.value, env), expr.fields.cases, env);
-    }
-    if (ast.is_quote(expr)) {
-	return quasiquote(expr.fields.ast, env);
-    }
-    if (ast.is_antiquote(expr)) {
-	return eval(strict(eval(expr.fields.expression, expr.fields.parse_env)), env);
-    }
-    if (ast.is_access(expr)) {
-	return access(strict(eval(expr.fields.namespace, env)), expr.fields.name.fields.name);
-    }
-    eval_trace('invalid:', expr);
-    throw new Error('invalid expression');
 };
 
 let lookup = (env, name) => {
@@ -70,7 +92,7 @@ let lookup = (env, name) => {
     if ('__parent_scope' in env) {
 	return lookup(env.__parent_scope, name);
     }
-    throw new Error('identifier not in scope: ' + name);
+    throw new eval_error('identifier not in scope:', name);
 };
 
 let call = exprs => {
@@ -81,7 +103,7 @@ let call = exprs => {
     }
     while (args.length > 0) {
 	if (!(fun instanceof Function)) {
-	    throw new Error('call: not a function:' + fun);
+	    throw new eval_error('call: not a function:', fun);
 	}
 	let n = Math.min(fun.length, args.length);
 	fun = fun(...args.slice(0, n));

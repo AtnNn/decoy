@@ -177,7 +177,11 @@ let backtracking_one_of = parsers => {
 };
 
 let pretty_loc = loc => {
-    return `${loc.path}:${loc.line}:${loc.char}`;
+    if (loc) {
+	return `${loc.path}:${loc.line}:${loc.char}`;
+    } else {
+	return 'unknown';
+    }
 };
 
 let error_message = res => {
