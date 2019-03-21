@@ -28,7 +28,7 @@ let id_char1 = match(/[a-z_]/i);
 
 let id_char = or_else(id_char1, digit);
 
-let empty_space = match(/\s*/);
+let empty_space = match(/(\s*(--.*(\n|$))?)*/);
 
 let token = parser => maps([parser, empty_space], (x, _) => x);
 

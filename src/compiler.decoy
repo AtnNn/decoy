@@ -40,4 +40,9 @@ compile := syntax -> switch (syntax)
       (write ".")
       (write name);
   (string _ s) -> do
-      (write ((javascript "JSON.stringify") s));;
+      (write ((javascript "JSON.stringify") s));
+  (lambda _ pattern body) -> do
+      (write "(")
+      -- TODO
+      (write ") => ")
+      ;;
