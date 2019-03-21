@@ -1,7 +1,8 @@
 let ast = require('./ast');
 let {record} = require('./data');
+let {pretty_loc} = require('./parse');
 
-//let eval_trace = (...args) => console.log('eval', ...args);
+//let eval_trace = (...args) => console.error('eval', ...args);
 let eval_trace = (..._) => null;
 
 let eval_defs = (defs, env) => {
@@ -80,7 +81,7 @@ let call = exprs => {
     }
     while (args.length > 0) {
 	if (!(fun instanceof Function)) {
-	    throw new Error('call: not a function');
+	    throw new Error('call: not a function:' + fun);
 	}
 	let n = Math.min(fun.length, args.length);
 	fun = fun(...args.slice(0, n));
@@ -129,6 +130,7 @@ let struct = (name, infields) => {
 };
 
 let match = (pattern, val) => {
+    eval_trace('match:', pattern);
     if (ast.is_quote(pattern)) {
 	pattern = quote_binding(pattern.fields.ast);
     }
@@ -191,19 +193,26 @@ let match = (pattern, val) => {
 }
 
 let switch_ = (value, cases, env) => {
+    let fails = [];
     for (let case_ of cases) {
 	let res = match(case_.fields.pattern[0], value);
 	if (!res.failed) {
 	    return eval(case_.fields.body, { __parent_scope: env, ...res.env });
+	} else {
+	    fails.push(res.reason);
 	}
     }
-    throw new Error('no matching case');
+    throw new Error(pretty_loc(cases[0].fields.loc) + ': no matching case: ' + fails);
 };
 
 let quote_binding = quoted => {
     let q = quote_binding;
     let app = (name, ...args) => {
-	return ast.mk_application([ast.mk_identifier(name), ...args]);
+	return ast.mk_application(
+	    quoted.fields.loc,
+	    [ast.mk_identifier(quoted.fields.loc, name),
+	     ast.mk_identifier(quoted.fields.loc, '_'),
+	     ...args]);
     };
     if (ast.is_antiquote(quoted)) {
 	return quoted.fields.expression;
@@ -250,10 +259,10 @@ let quasiquote = (quoted, env) => {
 	return eval(quoted.fields.expression, env);
     }
     if (ast.is_declaration(quoted)) {
-	return mk_declaration(q(quots.fields.lhs), q(quots.fields.rhs));
+	return mk_declaration(quoted.fields.loc, q(quots.fields.lhs), q(quots.fields.rhs));
     }
     if (ast.is_application(quoted)) {
-	return ast.mk_application(quoted.fields.children.map(q));
+	return ast.mk_application(quoted.fields.loc, quoted.fields.children.map(q));
     }
     if (ast.is_number(quoted)) {
 	return quoted;
@@ -262,16 +271,16 @@ let quasiquote = (quoted, env) => {
 	return quoted;
     }
     if (ast.is_lambda(quoted)) {
-	return ast.mk_lambda(quoted.fields.params.map(q), q(quoted.fields.body));
+	return ast.mk_lambda(quoted.fields.loc, quoted.fields.params.map(q), q(quoted.fields.body));
     }
     if (ast.is_struct(quoted)) {
-	return ast.mk_struct(q(quoted.fields.name), quoted.fields.fields.map(q));
+	return ast.mk_struct(quoted.fields.loc, q(quoted.fields.name), quoted.fields.fields.map(q));
     }
     if (ast.is_switch(quoted)) {
-	return ast.mk_switch(q(quoted.fields.value), quoted.fields.cases.map(q));
+	return ast.mk_switch(quoted.fields.loc, q(quoted.fields.value), quoted.fields.cases.map(q));
     }
     if (ast.is_case(quoted)) {
-	return ast.mk_case(q(quoted.fields.pattern), q(quoted.fields.value));
+	return ast.mk_case(quoted.fields.loc, q(quoted.fields.pattern), q(quoted.fields.value));
     }
     if (ast.is_quote(quoted)) {
 	return quoted;

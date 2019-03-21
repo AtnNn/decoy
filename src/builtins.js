@@ -4,7 +4,7 @@ let {toplevel, start} = require('./grammar');
 let {complete} = require('./parse');
 
 let builtins = {
-    toplevel, start, complete,
+    toplevel, start, complete, call,
     add: (a, b) => a + b,
     write: x => process.stdout.write(`${x}`),
     print: x => console.log(x),
@@ -36,7 +36,9 @@ let builtins = {
 	return val;
     }),
     new_env: () => ({ __parent_scope: builtins }),
-    read_file: path => fs.readFileSync(path).toString('utf8')
+    read_file: path => fs.readFileSync(path).toString('utf8'),
+    javascript: src => eval(src),
+    tail: xs => xs.slice(1)
 };
 
 module.exports = builtins;

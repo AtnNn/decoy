@@ -18,3 +18,7 @@
 - Backtracking
 - CSP
 - Spaces in names
+- Unification
+- NLP
+- Unified pattern matching and lambda syntax
+- First order patterns and partial lambdas

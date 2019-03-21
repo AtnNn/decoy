@@ -1,1 +1,1 @@
-main := 42;
+main := print 42;

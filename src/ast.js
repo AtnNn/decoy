@@ -16,7 +16,7 @@ let records = {
 };
 
 for (let name in records) {
-    let fields = records[name];
+    let fields = ['loc', ...records[name]];
     module.exports['mk_' + name] = (...args) => {
 	let props = {};
 	for (let k of fields) {

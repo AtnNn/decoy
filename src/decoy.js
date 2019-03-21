@@ -8,7 +8,8 @@ let fs = require('fs');
 let env = { __parent_scope: builtins };
 
 let decoy = (source) => {
-    let res = parse.complete(grammar.expression)(grammar.start(source, env));
+    let loc = (new Error()).stack.split('\n    at ')[2]
+    let res = parse.complete(grammar.expression)(grammar.start(source, env, loc));
     if (!res.failed) {
 	let val = interpreter.eval(res.value, env);
 	val = interpreter.strict(val);
@@ -17,14 +18,14 @@ let decoy = (source) => {
 	}
 	return val;
     }
-    throw new Error(res.reason);
+    throw new Error(parse.error_message(res));
 };
 
 let decoy_import = path => {
     let source = fs.readFileSync(path).toString('utf8');
-    let res = parse.complete(grammar.toplevel)(grammar.start(source, env));
+    let res = parse.complete(grammar.toplevel)(grammar.start(source, env, path));
     if (res.failed) {
-	throw new Error(path + ': parsing failed at ' + res.position + ': ' + res.reason);
+	throw new Error(parse.error_message(res));
     }
 };
 

@@ -1,4 +1,4 @@
-let {match, one_of, map, char, complete, many, try_, sequence} = require('../src/parse');
+let {match, one_of, map, char, complete, many, try_, sequence, error_message} = require('../src/parse');
 let {toplevel, declaration, definition, identifier, expression, application, string, string_char, start} = require('../src/grammar');
 let util = require('util');
 let builtins = require('../src/builtins');
@@ -10,10 +10,10 @@ let success = 0;
 
 let test = (parser, str) => {
     count++;
-    let res = complete(parser)(start(str, builtins));
+    let res = complete(parser)(start(str, builtins, 'grammar test ' + count));
     if(res.failed) {
 	dump('input', str);
-	console.log('unexpected failure at ' + res.position + ':', res.reason);
+	console.log(error_message(res));
     } else {
 	success++;
     }
@@ -21,7 +21,7 @@ let test = (parser, str) => {
 
 let test_fail = (parser, str, position) => {
     count++;
-    let res = complete(parser)(start(str, builtins));
+    let res = complete(parser)(start(str, builtins, 'grammar fail test ' + count));
     if(!res.failed || res.position !== position) {
 	dump('input', str);
 	dump('unexpected success', res);

@@ -13,13 +13,24 @@ let repr = x => {
 
 let scoped = (parser, scope) => input => parser({...input, scope: {...input.scope, ...scope}});
 
-let seek = position => input => ({...input, position});
+let seek = position => input => {
+    let prev = input.state.loc;
+    let span = input.data.slice(input.position, position);
+    let lines = (span.match(/\n/g) || []).length;
+    let chars = span.match(/.*$/)[0].length;
+    let loc = {
+	path: prev.path,
+	line: prev.line + lines,
+	char: lines ? chars : prev.char + chars
+    };
+    return {...input, position, state: { ...input.state, loc } }
+};
 
 let update = result => input => ({ ...input, position: result.position, state: result.state });
 
 let success = value => input => ({value, position: input.position, state: input.state});
 
-let failed = reason => input => ({failed: true, position: input.position, reason});
+let failed = reason => input => ({failed: true, position: input.position, reason, loc: input.state.loc});
 
 let tracep = (name, parser) => input => {
     let indent = '  '.repeat(input.scope.traceIndent);
@@ -165,7 +176,15 @@ let backtracking_one_of = parsers => {
     return one_of([...inits.map(p => try_(p)), last]);
 };
 
+let pretty_loc = loc => {
+    return `${loc.path}:${loc.line}:${loc.char}`;
+};
+
+let error_message = res => {
+    return `${pretty_loc(res.loc)}: ${res.reason}`;
+};
+
 module.exports = {
     many, many1, failed, one_of, or_else, sequence, char, digit, match, complete, any, lazy,
-    bind, map, binds, maps, tracep, try_, backtracking_one_of, success
+    bind, map, binds, maps, tracep, try_, backtracking_one_of, success, error_message, pretty_loc
 };

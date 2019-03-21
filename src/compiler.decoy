@@ -1,12 +1,22 @@
-main := compile_toplevel ((complete toplevel) (start (read_file (nth 0 process_arguments)) new_env)).value;
+main := compile_toplevel ((complete toplevel) (start (read_file (nth 0 process_arguments)) new_env (nth 0 process_arguments))).value;
 
-compile_toplevel := decls -> for decls (decl -> switch (decl)
-  (declaration (identifier name) rhs): do
-    (write "let ") (write name) (write " = ")
-    (compile rhs)
-    (write ";\n")
-    (write "module.exports.") (write name) (write " = ") (write name)
-    (write ";\n\n"););
+compile_toplevel := decls -> do
+  (write "Object.assign(this, require(\"")
+  (write (javascript "__dirname + '/builtins.js'"))
+  (write "\"));\n\n")
+  (for decls (decl -> switch (decl)
+    (declaration _ (identifier _ name) rhs): do
+      (write "let ") (write name) (write " = ")
+      (compile rhs)
+      (write ";\n")
+      (write "module.exports.") (write name) (write " = ") (write name)
+      (write ";\n\n");));
 
 compile := syntax -> switch (syntax)
-  (number i): do (write i) (write "n");;
+  (number _ i): do (write i) (write "n");
+  (identifier _ name):
+      (write name);
+  (application _ children):
+      (write "call([")
+      (for children (syntax -> do (compile syntax) (write ", ")))
+      (write "]);");;
