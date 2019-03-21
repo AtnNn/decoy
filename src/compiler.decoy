@@ -1,22 +1,24 @@
 main := compile_toplevel ((complete toplevel) (start (read_file (nth 0 process_arguments)) new_env (nth 0 process_arguments))).value;
 
 compile_toplevel := decls -> do
-  (write "Object.assign(this, require(\"")
+  (write "Object.assign(global, require(\"")
   (write (javascript "__dirname + '/builtins.js'"))
   (write "\"));\n\n")
   (for decls (decl -> switch (decl)
     (declaration _ (identifier _ name) rhs): do
-      (write "let ") (write name) (write " = ")
+      (write "let ") (write name) (write " = () => ")
       (compile rhs)
       (write ";\n")
       (write "module.exports.") (write name) (write " = ") (write name)
-      (write ";\n\n");));
+      (write ";\n\n");))
+  (write "call([main])");
 
 compile := syntax -> switch (syntax)
-  (number _ i): do (write i) (write "n");
+  (number _ i):
+      do (write i) (write "n");
   (identifier _ name):
       (write name);
-  (application _ children):
+  (application _ children): do
       (write "call([")
       (for children (syntax -> do (compile syntax) (write ", ")))
-      (write "]);");;
+      (write "])");;
