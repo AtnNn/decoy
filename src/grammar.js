@@ -78,10 +78,7 @@ let many2 = parser =>
 
 let application = bind(many2(lazy(() => expression1)), es => locate(ast.mk_application)(es));
 
-let case_ = binds([bindings, token(char(':')), expression, token(char(';'))],
-		  (pattern, _, body, __) => locate(ast.mk_case)(pattern, body));
-
-let switch_ = binds([token(match(/switch/)), parens(expression), many(case_)],
+let switch_ = binds([token(match(/switch/)), parens(expression), many(maps([lambda, token(match(/;/))], (case_, _) => case_))],
 		   (_, val, cases) => locate(ast.mk_switch)(val, cases));
 
 let quote = binds([token(match(/\$\{/)), lazy(() => backtracking_one_of([declaration, expression])), token(match(/}/))], (_, x, __) => locate(ast.mk_quote)(x));

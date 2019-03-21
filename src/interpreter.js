@@ -61,7 +61,7 @@ let eval = (expr, env) => {
 	    return call(children);
 	}
 	if (ast.is_lambda(expr)) {
-	    return lambda(expr.fields.params, expr.fields.body, env);
+	    return lambda(expr.fields.pattern, expr.fields.body, env);
 	}
 	if (ast.is_switch(expr)) {
 	    eval_trace('switch:', expr.fields.value);
@@ -252,16 +252,13 @@ let quote_binding = quoted => {
 	return app('string', quoted.fields.value)
     }
     if (ast.is_lambda(quoted)) {
-	return app('lambda', quoted.fields.params.map(q), q(quoted.fields.body));
+	return app('lambda', quoted.fields.pattern.map(q), q(quoted.fields.body));
     }
     if (ast.is_struct(quoted)) {
 	return app('struct', q(quoted.fields.name), quoted.fields.fields.map(q));
     }
     if (ast.is_switch(quoted)) {
 	return app('switch', q(quoted.fields.value), quoted.fields.cases.map(q));
-    }
-    if (ast.is_case(quoted)) {
-	return app('case', q(quoted.fields.pattern), q(quoted.fields.value));
     }
     if (ast.is_quote(quoted)) {
 	return app('quote', quote(quoted.fields.ast,
@@ -293,16 +290,13 @@ let quasiquote = (quoted, env) => {
 	return quoted;
     }
     if (ast.is_lambda(quoted)) {
-	return ast.mk_lambda(quoted.fields.loc, quoted.fields.params.map(q), q(quoted.fields.body));
+	return ast.mk_lambda(quoted.fields.loc, quoted.fields.pattern.map(q), q(quoted.fields.body));
     }
     if (ast.is_struct(quoted)) {
 	return ast.mk_struct(quoted.fields.loc, q(quoted.fields.name), quoted.fields.fields.map(q));
     }
     if (ast.is_switch(quoted)) {
 	return ast.mk_switch(quoted.fields.loc, q(quoted.fields.value), quoted.fields.cases.map(q));
-    }
-    if (ast.is_case(quoted)) {
-	return ast.mk_case(quoted.fields.loc, q(quoted.fields.pattern), q(quoted.fields.value));
     }
     if (ast.is_quote(quoted)) {
 	return quoted;

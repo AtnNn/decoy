@@ -6,10 +6,9 @@ let records = {
     application: ['children'],
     number: ['value'],
     string: ['value'],
-    lambda: ['params', 'body'],
+    lambda: ['pattern', 'body'],
     struct: ['name', 'fields'],
     switch: ['value', 'cases'],
-    case: ['pattern', 'body'],
     quote: ['ast'],
     antiquote: ['expression', 'parse_env'],
     access: ['namespace', 'name']

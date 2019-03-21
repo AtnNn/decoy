@@ -5,7 +5,7 @@ compile_toplevel := decls -> do
   (write (javascript "__dirname + '/builtins.js'"))
   (write "\"));\n\n")
   (for decls (decl -> switch (decl)
-    (declaration _ (identifier _ name) rhs): do
+    (declaration _ (identifier _ name) rhs) -> do
       (write "let ") (write name) (write " = () => ")
       (compile rhs)
       (write ";\n")
@@ -14,11 +14,11 @@ compile_toplevel := decls -> do
   (write "call([main])");
 
 compile := syntax -> switch (syntax)
-  (number _ i):
+  (number _ i) ->
       do (write i) (write "n");
-  (identifier _ name):
+  (identifier _ name) ->
       (write name);
-  (application _ children): do
+  (application _ children) -> do
       (write "call([")
       (for children (syntax -> do (compile syntax) (write ", ")))
       (write "])");;

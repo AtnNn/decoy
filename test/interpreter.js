@@ -68,11 +68,11 @@ test('add 1 2', 3n);
 test('(a -> add 3 a) 1', 4n);
 testd('test := 1;', 1n);
 testd('struct f (a b); test := f 1 2;', make_record('f', {a: 1n, b: 2n}));
-testd('struct f (a b); test := (switch (f 1 2) (f a b): a;);', 1n);
+testd('struct f (a b); test := (switch (f 1 2) (f a b) -> a;);', 1n);
 testd('x := ${1}; test := $x;', 1n);
 testd('x := ${a}; test := (a -> $x) 1;', 1n);
-testd('x := ${a}; test := switch (x) (identifier _ n): n;;', "a");
-testd('ite := i t e -> (switch (i) true: t; false: e;); test := ite true 1 2;', 1n);
+testd('x := ${a}; test := switch (x) (identifier _ n) -> n;;', "a");
+testd('ite := i t e -> (switch (i) true -> t; false -> e;); test := ite true 1 2;', 1n);
 test('(${add $(number _ a) $(number _ b)} -> add a b) ${add 1 2}', 3n);
 test('(${1} -> 2) ${1}', 2n)
 test('a.b', 1n)
