@@ -10,8 +10,21 @@ compile_toplevel := decls -> do
       (compile rhs)
       (write ";\n")
       (write "module.exports.") (write name) (write " = ") (write name)
-      (write ";\n\n");))
-  (write "call([main])");
+      (write ";\n\n");
+    (struct _ (identifier _ name) fields) -> do
+      (write "let ")
+      (write name)
+      (write " = (")
+      (for fields ((identifier _ field) -> do
+        (write field) (write ",")))
+      (write ") => new (function ")
+      (write name)
+      (write "() {\n")
+      (for fields ((identifier _ field) -> do
+        (write "  this.") (write field) (write " = ")
+	(write field) (write ";\n")))
+      (write "});\n") ;))
+  (write "call([main]);");
 
 compile := syntax -> switch (syntax)
   (number _ i) ->
@@ -21,4 +34,10 @@ compile := syntax -> switch (syntax)
   (application _ children) -> do
       (write "call([")
       (for children (syntax -> do (compile syntax) (write ", ")))
-      (write "])");;
+      (write "])");
+  (access _ expr (identifier _ name)) -> do
+      (compile expr)
+      (write ".")
+      (write name);
+  (string _ s) -> do
+      (write ((javascript "JSON.stringify") s));;
