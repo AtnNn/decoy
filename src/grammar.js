@@ -28,7 +28,14 @@ let id_char1 = match(/[a-z_]/i);
 
 let id_char = or_else(id_char1, digit);
 
-let empty_space = match(/(\s*(--.*(\n|$))?)*/);
+let empty_space = bind(match(/((\r?\n|[ \t])*(--.*(\r?\n|$))?)*/), spc => input => {
+    let line = spc.match(/\n[ \t]*$/);
+    let res = success(spc)(input);
+    if (line) {
+	res.state = { ...res.state, indent: line[0].replace(/\t/g, '        ').length - 1 };
+    }
+    return res;
+});;
 
 let token = parser => maps([parser, empty_space], (x, _) => x);
 

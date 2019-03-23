@@ -60,7 +60,9 @@ let many = parser => input => {
     while (true) {
 	let res = parser(current);
 	if (res.failed) {
-	    return success(value)(current);
+	    let done = success(value)(current);
+	    done.state = { ...done.state, last_error: res };
+	    return done;
 	}
 	value.push(res.value);
 	current = update(res)(current);
@@ -163,6 +165,9 @@ let complete = parser => input => {
 	return res;
     }
     if (res.position !== input.data.length) {
+	if (res.state.last_error) {
+	    return res.state.last_error;
+	}
 	return failed('complete: expected end of input')(update(res)(input));
     }
     return res;
