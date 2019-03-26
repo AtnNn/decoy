@@ -2,7 +2,8 @@ let fs = require('fs');
 let ast = require('./ast');
 let interpreter = require('./interpreter');
 let {many, many1, failed, one_of, or_else, sequence, char, digit, match, lazy,
-     value, bind, map, binds, maps, tracep, try_, backtracking_one_of, success} = require('./parse');
+     value, bind, map, binds, maps, tracep, try_, backtracking_one_of,
+     success, pretty_loc, optional} = require('./parse');
 
 let trace = (...args) => {
     console.log('trace:', ...args);
@@ -14,7 +15,9 @@ let start = (data, env, path) => {
 	data,
 	scope: { env },
 	state: {
-	    loc: { path, line: 0, char: 0 },
+	    loc: { path, line: 1, char: 1 },
+	    require_indent: ['min', 0],
+	    indent: null
 	},
 	position: 0
     };
@@ -24,26 +27,52 @@ let locate = f => (...args) => input => {
     return success(f(input.state.loc, ...args))(input);
 };
 
-let id_char1 = match(/[a-z_]/i);
-
-let id_char = or_else(id_char1, digit);
-
 let empty_space = bind(match(/((\r?\n|[ \t])*(--.*(\r?\n|$))?)*/), spc => input => {
+    //console.error(JSON.stringify(spc));
     let line = spc.match(/\n[ \t]*$/);
     let res = success(spc)(input);
     if (line) {
-	res.state = { ...res.state, indent: line[0].replace(/\t/g, '        ').length - 1 };
+	let indent = line[0].replace(/\t/g, '        ').length - 1;
+	res.state = { ...res.state, indent };
+	//console.error(pretty_loc(input.state.loc) + ': change indent to', indent);
     }
     return res;
 });;
 
-let token = parser => maps([parser, empty_space], (x, _) => x);
+let token = parser => bind(parser, token => input => {
+    let state = { ...input.state };
+    let required = 0;
+    if (state.indent !== null && state.indent < state.require_indent[1]) {
+	///console.error(`${pretty_loc(state.loc)}: not indented enough: ${state.indent} < ${state.require_indent[1]}:`);
+	return failed('token not indented enough')(input);
+    }
+    if (state.require_indent[0] === 'auto' && state.indent !== null) {
+	    //console.error(`${pretty_loc(state.loc)}: autoindent to ${state.indent}`);
+	state.require_indent = ['min', state.indent];
+    }
+    return maps([success(token), empty_space], (t, _) => t)(input);
+});
+
+let indented = parser => input => {
+    let current = input.state.require_indent;
+    let reset = ['auto', current[0] === 'auto' ? current[1] : current[1] + 1];
+    //console.error(`${pretty_loc(input.state.loc)}: increase indent to ${current[1] + 1}`);
+    let new_input = { ...input, state: { ...input.state, require_indent: reset, indent: null } };
+    let res = parser(new_input);
+    if (!res.failed) {
+	res = { ...res, state: { ...res.state, require_indent: current } };
+	//console.error(`${pretty_loc(input.state.loc)}: reset indent to ${current[1]}`);
+    }
+    return res;
+};
 
 let dollar = token(match(/\$/));
 
+let semicolon = token(match(/;/));
+
 let identifier =
-    token(binds([id_char1, many(id_char)], (x, xs) =>
-		 locate(ast.mk_identifier)(x + xs.join(''))));
+    token(bind(token(match(/[A-Za-z_][A-Za-z_0-9]*/)), id =>
+		 locate(ast.mk_identifier)(id)));
 
 let number = token(bind(match(/[0-9]+/), n => locate(ast.mk_number)(BigInt(n))));
 
@@ -64,8 +93,8 @@ let literal = one_of([number, string]);
 let atom = one_of([identifier, literal]);
 
 let parens = parser =>
-    maps([token(char('(')),  parser, token(char(')'))],
-	 (_, x, __) => x);
+    indented(maps([token(char('(')),  parser, token(char(')'))],
+		  (_, x, __) => x));
 
 let binding_application =
     parens(binds([identifier, lazy(() => bindings)],
@@ -85,8 +114,8 @@ let many2 = parser =>
 
 let application = bind(many2(lazy(() => expression1)), es => locate(ast.mk_application)(es));
 
-let switch_ = binds([token(match(/switch/)), parens(expression), many(maps([lambda, token(match(/;/))], (case_, _) => case_))],
-		   (_, val, cases) => locate(ast.mk_switch)(val, cases));
+let switch_ = binds([token(match(/switch/)), parens(expression), indented(many(maps([lambda, optional(semicolon)], (case_, _) => case_)))],
+		     (_, val, cases) => locate(ast.mk_switch)(val, cases));
 
 let quote = binds([token(match(/\$\{/)), lazy(() => backtracking_one_of([declaration, expression])), token(match(/}/))], (_, x, __) => locate(ast.mk_quote)(x));
 
@@ -114,7 +143,7 @@ let struct = binds([token(match(/struct/)), identifier, parens(many(identifier))
 let declaration = backtracking_one_of([struct, antiquote, definition]);
 
 let toplevel =
-    maps([empty_space, many(binds([declaration, token(char(';'))], (decl, _) => extend_env(decl)))],
+    maps([empty_space, many(indented(binds([declaration, optional(semicolon)], (decl, _) => extend_env(decl))))],
 	 (_, declss) => declss.flat());
 
 let extend_env = decl => input => {

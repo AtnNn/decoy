@@ -1,5 +1,5 @@
 let trace = (...args) => {
-    console.log('trace:', ...args);
+    console.error('trace:', ...args);
     return args[args.length - 1];
 };
 
@@ -13,6 +13,18 @@ let repr = x => {
 
 let scoped = (parser, scope) => input => parser({...input, scope: {...input.scope, ...scope}});
 
+let tracep = (name, parser) => input => {
+    let indent = '  '.repeat(input.scope.traceIndent || 0);
+    console.error(indent + 'parser', name, 'at', repr(input.data.slice(input.position, input.position+10)), '('+pretty_loc(input.state.loc)+')');
+    let res = scoped(parser, {traceIndent: (input.scope.traceIndent||0) + 1})(input);
+    if (res.failed) {
+	console.error(indent + 'parser', name, 'failed at ' + res.position +':\n ', res.reason.replace(/^|\n/g, x => x + indent));
+	return res;
+    }
+    console.error(indent + 'parser', name, 'returned', res.value, 'from', repr(input.data.slice(input.position, res.position)));
+    return res;
+};
+
 let seek = position => input => {
     let prev = input.state.loc;
     let span = input.data.slice(input.position, position);
@@ -21,7 +33,7 @@ let seek = position => input => {
     let loc = {
 	path: prev.path,
 	line: prev.line + lines,
-	char: lines ? chars : prev.char + chars
+	char: lines ? chars + 1 : prev.char + chars
     };
     return {...input, position, state: { ...input.state, loc } }
 };
@@ -31,18 +43,6 @@ let update = result => input => ({ ...input, position: result.position, state: r
 let success = value => input => ({value, position: input.position, state: input.state});
 
 let failed = reason => input => ({failed: true, position: input.position, reason, loc: input.state.loc});
-
-let tracep = (name, parser) => input => {
-    let indent = '  '.repeat(input.scope.traceIndent);
-    console.log(indent + 'parser', name, 'at', repr(input.data.slice(input.position, input.position+10)), '('+input.position+')');
-    let res = scoped(parser, {traceIndent: (input.scope.traceIndent||0) + 1})(input);
-    if (res.failed) {
-	console.log(indent + 'parser', name, 'failed at ' + res.position +':\n ', res.reason.replace(/^|\n/g, x => x + indent));
-	return res;
-    }
-    console.log(indent + 'parser', name, 'returned', res.value, 'from', repr(input.data.slice(input.position, res.position)));
-    return res;
-};
 
 let match = regex => input => {
     new_regex = RegExp(regex.source, regex.flags + 'y');
@@ -88,6 +88,8 @@ let one_of = parsers => input => {
     }
     return failed('one_of: none of the parsers matched:\n  ' + reasons.map(r => r.replace(/^|\n/g, x => x + '  ')).join('\n  '))(input);
 };
+
+let optional = parser => or_else(parser, success(null));
 
 let try_ = parser => input => {
     let res = parser(input);
@@ -195,5 +197,5 @@ let error_message = res => {
 
 module.exports = {
     many, many1, failed, one_of, or_else, sequence, char, digit, match, complete, any, lazy,
-    bind, map, binds, maps, tracep, try_, backtracking_one_of, success, error_message, pretty_loc
+    bind, map, binds, maps, tracep, try_, backtracking_one_of, success, error_message, pretty_loc, optional
 };
