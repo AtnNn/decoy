@@ -21,7 +21,7 @@ let tracep = (name, parser) => input => {
 	console.error(indent + 'parser', name, 'failed at ' + pretty_loc(res.loc) +':\n ', res.reason.replace(/^|\n/g, x => x + indent));
 	return res;
     }
-    console.error(indent + 'parser', name, 'returned', res.value, 'from', repr(input.data.slice(input.position, res.position)));
+    console.error(indent + 'parser', name, 'parsed', repr(input.data.slice(input.position, res.position)));
     return res;
 };
 

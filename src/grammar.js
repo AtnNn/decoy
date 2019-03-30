@@ -10,6 +10,9 @@ let trace = (...args) => {
     return args[args.length - 1];
 };
 
+let trace_indent = () => null;
+//let trace_indent = console.error;
+
 let start = (data, env, path) => {
     return {
 	data,
@@ -33,7 +36,7 @@ let empty_space = bind(match(/((\r?\n|[ \t])*(--.*(\r?\n|$))?)*/), spc => input 
     if (line) {
 	let indent = line[0].replace(/\t/g, '        ').length - 1;
 	res.state = { ...res.state, indent };
-	//console.error(pretty_loc(input.state.loc) + ': change indent to', indent, 'from', JSON.stringify(line));
+	trace_indent(pretty_loc(input.state.loc) + ': change indent to', indent, 'from', JSON.stringify(line));
     }
     return res;
 });;
@@ -42,11 +45,11 @@ let token = parser => bind(parser, token => input => {
     let state = { ...input.state };
     let required = 0;
     if (state.indent !== null && state.indent < state.require_indent[1]) {
-	//console.error(`${pretty_loc(state.loc)}: not indented enough: ${state.indent} < ${state.require_indent[1]}:`);
+	trace_indent(`${pretty_loc(state.loc)}: not indented enough: ${state.indent} < ${state.require_indent}:`);
 	return failed('token not indented enough')(input);
     }
     if (state.require_indent[0] === 'auto' && state.indent !== null) {
-	//console.error(`${pretty_loc(state.loc)}: autoindent to ${state.indent}`);
+	trace_indent(`${pretty_loc(state.loc)}: auto set require_indent to min,${state.indent}`);
 	state.require_indent = ['min', state.indent];
     }
     return maps([success(token), empty_space], (t, _) => t)(input);
@@ -55,12 +58,12 @@ let token = parser => bind(parser, token => input => {
 let indented = parser => input => {
     let current = input.state.require_indent;
     let reset = ['auto', current[0] === 'auto' ? current[1] : current[1] + 1];
-    //console.error(`${pretty_loc(input.state.loc)}: increase require_indent to ${current[1] + 1}`);
+    trace_indent(`${pretty_loc(input.state.loc)}: increase require_indent to ${reset} from ${current}`);
     let new_input = { ...input, state: { ...input.state, require_indent: reset, indent: null } };
     let res = parser(new_input);
     if (!res.failed) {
 	res = { ...res, state: { ...res.state, require_indent: current } };
-	//console.error(`${pretty_loc(input.state.loc)}: reset require_indent to ${current[1]}`);
+	trace_indent(`${pretty_loc(input.state.loc)}: reset require_indent to ${current}`);
     }
     return res;
 };
@@ -92,20 +95,20 @@ let literal = one_of([number, string]);
 let atom = one_of([identifier, literal]);
 
 let parens = parser =>
-    indented(maps([token(char('(')),  parser, token(char(')'))],
+    indented(maps([token(char('(')), parser, token(char(')'))],
 				   (_, x, __) => x));
 
 let binding_application =
     parens(binds([identifier, lazy(() => bindings)],
 		 (x, xs) => locate(ast.mk_application)([x, ...xs])));
 
-let bindings = many1(backtracking_one_of([lazy(() => quote), identifier, binding_application]));
+let bindings = many1(backtracking_one_of([lazy(() => quote), identifier, binding_application, literal]));
 
 let lambda =
     binds([bindings, token(match(/->/)), lazy(() => expression)],
 	  (params, _, body) => locate(ast.mk_lambda)(params, body));
 
-let expression = backtracking_one_of([lambda, lazy(() => application), lazy(() => expression1)]);
+let expression = backtracking_one_of([lazy(() => switch_), lambda, lazy(() => application), lazy(() => expression1)]);
 
 let many2 = parser =>
     maps([parser, parser, many(parser)],
@@ -113,8 +116,8 @@ let many2 = parser =>
 
 let application = bind(many2(lazy(() => expression1)), es => locate(ast.mk_application)(es));
 
-let switch_ = binds([token(match(/switch/)), parens(expression), indented(many(maps([lambda, optional(semicolon)], (case_, _) => case_)))],
-		     (_, val, cases) => locate(ast.mk_switch)(val, cases));
+let switch_ = binds([token(match(/switch/)), parens(expression), indented(many(indented(maps([lambda, optional(semicolon)], (case_, _) => case_))))],
+				     (_, val, cases) => locate(ast.mk_switch)(val, cases));
 
 let quote = binds([token(match(/\$\{/)), lazy(() => backtracking_one_of([declaration, expression])), token(match(/}/))], (_, x, __) => locate(ast.mk_quote)(x));
 
@@ -130,7 +133,7 @@ let expression2 =
 	    return success(expr)(input);
 	});
 
-let expression1 = one_of([try_(switch_), quote, antiquote, expression2]);
+let expression1 = one_of([quote, antiquote, expression2]);
 
 let definition =
     binds([expression, token(match(/:=/)), expression],

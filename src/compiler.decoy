@@ -1,5 +1,3 @@
-a := b.c
-
 main := compile_toplevel ((complete toplevel) (start (read_file (nth 0 process_arguments)) new_env (nth 0 process_arguments))).value
 
 compile_toplevel := decls -> do
@@ -26,7 +24,7 @@ compile_toplevel := decls -> do
         (write "  this.") (write field) (write " = ")
 	(write field) (write ";\n")))
       (write "});\n") ;))
-  (write "call([main]);");
+  (write "call([main]);")
 
 compile := syntax -> switch (syntax)
   (number _ i) ->
@@ -47,4 +45,3 @@ compile := syntax -> switch (syntax)
       (write "(")
       -- TODO
       (write ") => ")
-      ;;
