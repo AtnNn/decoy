@@ -28,13 +28,12 @@ let locate = f => (...args) => input => {
 };
 
 let empty_space = bind(match(/((\r?\n|[ \t])*(--.*(\r?\n|$))?)*/), spc => input => {
-    //console.error(JSON.stringify(spc));
     let line = spc.match(/\n[ \t]*$/);
     let res = success(spc)(input);
     if (line) {
 	let indent = line[0].replace(/\t/g, '        ').length - 1;
 	res.state = { ...res.state, indent };
-	//console.error(pretty_loc(input.state.loc) + ': change indent to', indent);
+	//console.error(pretty_loc(input.state.loc) + ': change indent to', indent, 'from', JSON.stringify(line));
     }
     return res;
 });;
@@ -43,11 +42,11 @@ let token = parser => bind(parser, token => input => {
     let state = { ...input.state };
     let required = 0;
     if (state.indent !== null && state.indent < state.require_indent[1]) {
-	///console.error(`${pretty_loc(state.loc)}: not indented enough: ${state.indent} < ${state.require_indent[1]}:`);
+	//console.error(`${pretty_loc(state.loc)}: not indented enough: ${state.indent} < ${state.require_indent[1]}:`);
 	return failed('token not indented enough')(input);
     }
     if (state.require_indent[0] === 'auto' && state.indent !== null) {
-	    //console.error(`${pretty_loc(state.loc)}: autoindent to ${state.indent}`);
+	//console.error(`${pretty_loc(state.loc)}: autoindent to ${state.indent}`);
 	state.require_indent = ['min', state.indent];
     }
     return maps([success(token), empty_space], (t, _) => t)(input);
@@ -56,12 +55,12 @@ let token = parser => bind(parser, token => input => {
 let indented = parser => input => {
     let current = input.state.require_indent;
     let reset = ['auto', current[0] === 'auto' ? current[1] : current[1] + 1];
-    //console.error(`${pretty_loc(input.state.loc)}: increase indent to ${current[1] + 1}`);
+    //console.error(`${pretty_loc(input.state.loc)}: increase require_indent to ${current[1] + 1}`);
     let new_input = { ...input, state: { ...input.state, require_indent: reset, indent: null } };
     let res = parser(new_input);
     if (!res.failed) {
 	res = { ...res, state: { ...res.state, require_indent: current } };
-	//console.error(`${pretty_loc(input.state.loc)}: reset indent to ${current[1]}`);
+	//console.error(`${pretty_loc(input.state.loc)}: reset require_indent to ${current[1]}`);
     }
     return res;
 };
@@ -71,8 +70,8 @@ let dollar = token(match(/\$/));
 let semicolon = token(match(/;/));
 
 let identifier =
-    token(bind(token(match(/[A-Za-z_][A-Za-z_0-9]*/)), id =>
-		 locate(ast.mk_identifier)(id)));
+    bind(token(match(/[A-Za-z_][A-Za-z_0-9]*/)), id =>
+		 locate(ast.mk_identifier)(id));
 
 let number = token(bind(match(/[0-9]+/), n => locate(ast.mk_number)(BigInt(n))));
 
@@ -94,7 +93,7 @@ let atom = one_of([identifier, literal]);
 
 let parens = parser =>
     indented(maps([token(char('(')),  parser, token(char(')'))],
-		  (_, x, __) => x));
+				   (_, x, __) => x));
 
 let binding_application =
     parens(binds([identifier, lazy(() => bindings)],
@@ -123,7 +122,7 @@ let antiquote = binds([dollar, lazy(() => expression1)], (_, x) => input => loca
 
 let expression2 =
     binds([one_of([try_(atom), parens(lazy(() => expression))]),
-	  many(maps([token(char('.')), identifier], (_, n) => n))],
+	   many(maps([token(char('.')), identifier], (_, n) => n))],
 	(expr, accesses) => input => {
 	    for (let name of accesses) {
 		expr = ast.mk_access(input, expr, name);

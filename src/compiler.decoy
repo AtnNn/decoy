@@ -1,3 +1,5 @@
+a := b.c
+
 main := compile_toplevel ((complete toplevel) (start (read_file (nth 0 process_arguments)) new_env (nth 0 process_arguments))).value
 
 compile_toplevel := decls -> do

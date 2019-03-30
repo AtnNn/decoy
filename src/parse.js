@@ -18,7 +18,7 @@ let tracep = (name, parser) => input => {
     console.error(indent + 'parser', name, 'at', repr(input.data.slice(input.position, input.position+10)), '('+pretty_loc(input.state.loc)+')');
     let res = scoped(parser, {traceIndent: (input.scope.traceIndent||0) + 1})(input);
     if (res.failed) {
-	console.error(indent + 'parser', name, 'failed at ' + res.position +':\n ', res.reason.replace(/^|\n/g, x => x + indent));
+	console.error(indent + 'parser', name, 'failed at ' + pretty_loc(res.loc) +':\n ', res.reason.replace(/^|\n/g, x => x + indent));
 	return res;
     }
     console.error(indent + 'parser', name, 'returned', res.value, 'from', repr(input.data.slice(input.position, res.position)));
@@ -154,7 +154,7 @@ let any = input => {
 
 let string = str => input => {
     if (input.data.slice(input.position, input.position + str.length) !== str) {
-	return failed('string ' + JSON.stringify(str) + ' not found')(seek(input.data.length + 1)(input));
+	return failed('string ' + JSON.stringify(str) + ' not found')(input);
     }
     return success(str)(seek(input.position + str.length)(input))
 };
